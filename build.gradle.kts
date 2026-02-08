@@ -27,7 +27,7 @@ tasks.withType<JavaCompile> {
 
 application {
     mainModule.set("dev.matito.snake_ai")
-    mainClass.set("dev.matito.snake_ai.HelloApplication")
+    mainClass.set("dev.matito.snake_ai.Launcher")
 }
 
 javafx {
@@ -50,7 +50,6 @@ dependencies {
     }
     implementation("com.github.almasb:fxgl:17.3") {
         exclude(group = "org.openjfx")
-        exclude(group = "org.jetbrains.kotlin")
     }
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
