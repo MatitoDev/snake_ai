@@ -57,14 +57,13 @@ public final class QLAgent {
 
 	public QLAgent(long seed) {
 		Config config = new Config("config.properties");
+		this.persistenceFile = new File(DEFAULT_QTABLE_FILE);
 		if (config.isEpsilonOverride()) {
 			this.epsilon = config.getAgentEpsilonStart();
 			this.epsilonDecay = config.getEpsilonDecay();
 			this.epsilonMin = config.getAgentEpsilonMin();
-		}
+		} else loadIfExists();
 		this.rnd = new Random(seed);
-		this.persistenceFile = new File(DEFAULT_QTABLE_FILE);
-		loadIfExists();
 		installShutdownHook();
 		this.lastAutoSaveMillis = System.currentTimeMillis();
 	}
@@ -382,7 +381,7 @@ public final class QLAgent {
 
 			alpha = in.readDouble();
 			gamma = in.readDouble();
-			double epsilon_1 = in.readDouble();
+			epsilon = in.readDouble();
 			epsilonMin = in.readDouble();
 			epsilonDecay = in.readDouble();
 
@@ -396,5 +395,9 @@ public final class QLAgent {
 
 	public double getEpsilon() {
 		return epsilon;
+	}
+
+	public double getEpsilonMin() {
+		return epsilonMin;
 	}
 }

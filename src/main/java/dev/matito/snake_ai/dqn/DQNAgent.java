@@ -30,7 +30,7 @@ public final class DQNAgent {
 	private double epsilonMin;
 	private double epsilonDecay;
 
-	private int targetUpdateFrequency = 1000;
+	private int targetUpdateFrequency = 100;
 	private int updateCounter = 0;
 
 	private int autoSaveEverySteps = 500;
@@ -44,20 +44,18 @@ public final class DQNAgent {
 
 	public DQNAgent(int gridWidth, int gridHeight, int replayCapacity, long seed) {
 		Config config = new Config("config.properties");
+		this.persistenceFile = new File(DEFAULT_WEIGHTS_FILE);
 		if (config.isEpsilonOverride()) {
 			this.epsilon = config.getAgentEpsilonStart();
 			this.epsilonDecay = config.getEpsilonDecay();
 			this.epsilonMin = config.getAgentEpsilonMin();
-		}
+		} else loadIfExists();
 		int inputSize = 4 * gridWidth * gridHeight;
 		this.onlineNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed);
 		this.targetNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed + 1);
 		this.targetNetwork.copyWeightsFrom(onlineNetwork);
 		this.replayBuffer = new ReplayBuffer(replayCapacity, seed + 2);
 		this.random = new Random(seed + 3);
-		this.persistenceFile = new File(DEFAULT_WEIGHTS_FILE);
-
-		loadIfExists();
 		installShutdownHook();
 		this.lastAutoSaveMillis = System.currentTimeMillis();
 	}
@@ -352,6 +350,10 @@ public final class DQNAgent {
 
 	public double getEpsilon() {
 		return epsilon;
+	}
+
+	public double getEpsilonMin() {
+		return epsilonMin;
 	}
 
 	public int getReplayBufferSize() {

@@ -23,12 +23,28 @@ public class Launcher {
         System.out.println("Running in headless QL mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
         int i = 1;
-        while (game.getGameState() != GameState.WON || agent.getEpsilon() == config.getAgentEpsilonMin()) {
+        while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
             game.setDirection(agent.getAIDecision(State.fromGame(game)));
             if (game.getGameState() == GameState.GAME_OVER) {
+
                 System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
                 game.reset();
                 i++;
+            }
+            game.step();
+        }
+
+        System.out.println("Try to get Highscore");
+        int highscore = 0;
+        while (game.getGameState() != GameState.WON) {
+            agent.setExploration(0.0, 0.0, 0.0);
+            game.setDirection(agent.decide(game));
+            if (game.getGameState() == GameState.GAME_OVER) {
+                if (game.getScore() > highscore) {
+                    System.out.println("New Highscore: " + game.getScore());
+                    highscore = game.getScore();
+                }
+                game.reset();
             }
             game.step();
         }
@@ -47,14 +63,29 @@ public class Launcher {
         System.out.println("Running in headless DQN mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
         int i = 1;
-        while (game.getGameState() != GameState.WON || agent.getEpsilon() == config.getAgentEpsilonMin()) {
+        while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
             game.setDirection(agent.decide(game));
             if (game.getGameState() == GameState.GAME_OVER) {
                 System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                agent.train(config.getAgentDqnBatch());
                 game.reset();
                 i++;
             }
-            agent.train(config.getAgentDqnBatch());
+            game.step();
+        }
+
+        System.out.println("Try to get Highscore");
+        int highscore = 0;
+        while (game.getGameState() != GameState.WON) {
+            agent.setEpsilon(0.0, 0.0, 0.0);
+            game.setDirection(agent.decide(game));
+            if (game.getGameState() == GameState.GAME_OVER) {
+                if (game.getScore() > highscore) {
+                    System.out.println("New Highscore: " + game.getScore());
+                    highscore = game.getScore();
+                }
+                game.reset();
+            }
             game.step();
         }
 
