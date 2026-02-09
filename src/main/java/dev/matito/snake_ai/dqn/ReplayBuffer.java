@@ -17,7 +17,7 @@ public final class ReplayBuffer {
 
 	public void add(Transition transition) {
 		if (buffer.size() >= capacity) {
-			buffer.remove(0);
+			buffer.removeFirst();
 		}
 		buffer.add(transition);
 	}

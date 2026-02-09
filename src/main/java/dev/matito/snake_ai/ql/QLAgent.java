@@ -377,7 +377,7 @@ public final class QLAgent {
 
 			alpha = in.readDouble();
 			gamma = in.readDouble();
-			epsilon = in.readDouble();
+			double epsilon_1 = in.readDouble();
 			epsilonMin = in.readDouble();
 			epsilonDecay = in.readDouble();
 

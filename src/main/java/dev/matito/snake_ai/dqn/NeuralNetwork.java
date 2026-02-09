@@ -1,5 +1,6 @@
 package dev.matito.snake_ai.dqn;
 
+import java.io.*;
 import java.util.Random;
 
 public final class NeuralNetwork {
@@ -126,6 +127,79 @@ public final class NeuralNetwork {
 			System.arraycopy(other.w3[i], 0, w3[i], 0, hiddenSize2);
 		}
 		System.arraycopy(other.b3, 0, b3, 0, outputSize);
+	}
+
+	public void save(DataOutputStream out) throws IOException {
+		out.writeInt(inputSize);
+		out.writeInt(hiddenSize1);
+		out.writeInt(hiddenSize2);
+		out.writeInt(outputSize);
+
+		for (int i = 0; i < hiddenSize1; i++) {
+			for (int j = 0; j < inputSize; j++) {
+				out.writeDouble(w1[i][j]);
+			}
+		}
+		for (int i = 0; i < hiddenSize1; i++) {
+			out.writeDouble(b1[i]);
+		}
+
+		for (int i = 0; i < hiddenSize2; i++) {
+			for (int j = 0; j < hiddenSize1; j++) {
+				out.writeDouble(w2[i][j]);
+			}
+		}
+		for (int i = 0; i < hiddenSize2; i++) {
+			out.writeDouble(b2[i]);
+		}
+
+		for (int i = 0; i < outputSize; i++) {
+			for (int j = 0; j < hiddenSize2; j++) {
+				out.writeDouble(w3[i][j]);
+			}
+		}
+		for (int i = 0; i < outputSize; i++) {
+			out.writeDouble(b3[i]);
+		}
+	}
+
+	public void load(DataInputStream in) throws IOException {
+		int loadedInputSize = in.readInt();
+		int loadedHiddenSize1 = in.readInt();
+		int loadedHiddenSize2 = in.readInt();
+		int loadedOutputSize = in.readInt();
+
+		if (loadedInputSize != inputSize || loadedHiddenSize1 != hiddenSize1 ||
+				loadedHiddenSize2 != hiddenSize2 || loadedOutputSize != outputSize) {
+			throw new IOException("Network dimension mismatch");
+		}
+
+		for (int i = 0; i < hiddenSize1; i++) {
+			for (int j = 0; j < inputSize; j++) {
+				w1[i][j] = in.readDouble();
+			}
+		}
+		for (int i = 0; i < hiddenSize1; i++) {
+			b1[i] = in.readDouble();
+		}
+
+		for (int i = 0; i < hiddenSize2; i++) {
+			for (int j = 0; j < hiddenSize1; j++) {
+				w2[i][j] = in.readDouble();
+			}
+		}
+		for (int i = 0; i < hiddenSize2; i++) {
+			b2[i] = in.readDouble();
+		}
+
+		for (int i = 0; i < outputSize; i++) {
+			for (int j = 0; j < hiddenSize2; j++) {
+				w3[i][j] = in.readDouble();
+			}
+		}
+		for (int i = 0; i < outputSize; i++) {
+			b3[i] = in.readDouble();
+		}
 	}
 
 	private double relu(double x) {

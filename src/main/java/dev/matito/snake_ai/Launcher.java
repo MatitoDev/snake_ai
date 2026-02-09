@@ -11,8 +11,8 @@ public class Launcher {
         GameConfig config = new GameConfig("config.properties");
 
         if (config.isGuiEnabled()) SnakeApplication.main(args);
-        else if ((Objects.equals(config.getAgent(), "QL"))) runHeadlessQL(config);
-            else runHeadlessDQN(config);
+        else if (Objects.equals(config.getAgent(), "QL")) runHeadlessQL(config);
+            else if (Objects.equals(config.getAgent(), "DQN")) runHeadlessDQN(config);
     }
 
     private static void runHeadlessQL(GameConfig config) {

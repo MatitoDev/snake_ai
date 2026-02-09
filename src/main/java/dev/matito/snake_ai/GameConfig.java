@@ -23,7 +23,7 @@ public class GameConfig {
             this.gridHeight = Integer.parseInt(props.getProperty("grid.height", "20"));
             this.guiEnabled = Boolean.parseBoolean(props.getProperty("gui.enabled", "true"));
             this.gameSpeed = Integer.parseInt(props.getProperty("game.speed", "150"));
-            this.agent = props.getProperty("game.speed", "150");
+            this.agent = props.getProperty("agent", "QL");
             this.agentEpsilonStart = Double.parseDouble(props.getProperty("agent.epsilon.start", "1.0"));
             this.agentEpsilonMin = Double.parseDouble(props.getProperty("agent.epsilon.min", "0.005"));
             this.epsilonDecay = Double.parseDouble(props.getProperty("agent.epsilon.decay", "0.9995"));

@@ -26,8 +26,8 @@ public class SnakeApplication extends Application {
 
 
         snakeGUI.getCanvas().requestFocus();
-        if (Objects.equals(config.getAgent(), "DQN")) snakeGUI.startDQN();
-        else snakeGUI.startQL();
+        if (Objects.equals(config.getAgent(), "QL")) snakeGUI.startQL();
+        else if (Objects.equals(config.getAgent(), "DQN")) snakeGUI.startDQN();
     }
 
     @Override

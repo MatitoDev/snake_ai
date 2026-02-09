@@ -25,7 +25,7 @@ public class SnakeGame {
         this.gridWidth = gridWidth;
         this.gridHeight = gridHeight;
         this.snake = new ArrayList<>();
-        this.random = new Random(123456789L);
+        this.random = new Random();
         this.score = 0;
         this.ateFood = false;
         reset();
