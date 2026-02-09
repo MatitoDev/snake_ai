@@ -12,7 +12,7 @@ public class SnakeApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        GameConfig config = new GameConfig("config.properties");
+        Config config = new Config("config.properties");
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         snakeGUI = new SnakeGUI(game, config.getGameSpeed());
 

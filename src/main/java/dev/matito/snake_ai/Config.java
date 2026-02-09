@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-public class GameConfig {
+public class Config {
     private final int gridWidth;
     private final int gridHeight;
     private final boolean guiEnabled;
@@ -19,7 +19,7 @@ public class GameConfig {
     private final double agentEpsilonMin;
     private final double epsilonDecay;
 
-    public GameConfig(String configPath) {
+    public Config(String configPath) {
         Properties props = new Properties();
         try (InputStream input = new FileInputStream(configPath)) {
             props.load(input);

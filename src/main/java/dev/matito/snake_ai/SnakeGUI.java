@@ -10,7 +10,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
-import javafx.stage.Stage;
 
 import java.util.List;
 
@@ -56,7 +55,7 @@ public class SnakeGUI {
     }
 
     public void startQL() {
-        GameConfig config = new GameConfig("config.properties");
+        Config config = new Config("config.properties");
         QLAgent agent = new QLAgent();
         agent.setLearning(config.getAgentAlpha(), config.getAgentGamma());
         gameLoop = new AnimationTimer() {
@@ -78,7 +77,7 @@ public class SnakeGUI {
     }
 
     public void startDQN() {
-        GameConfig config = new GameConfig("config.properties");
+        Config config = new Config("config.properties");
         DQNAgent agent = new DQNAgent(game.getGridWidth(), game.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
         agent.setLearningRate(config.getAgentAlpha());
         agent.setGamma(config.getAgentGamma());

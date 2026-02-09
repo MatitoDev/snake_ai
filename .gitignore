@@ -45,3 +45,4 @@ bin/
 java_pid53263.hprof
 qtable.bin
 dqn_weights.bin
+qtable.bin.tmp

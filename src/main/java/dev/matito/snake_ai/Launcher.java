@@ -8,14 +8,14 @@ import java.util.Objects;
 
 public class Launcher {
     public static void main(String[] args) {
-        GameConfig config = new GameConfig("config.properties");
+        Config config = new Config("config.properties");
 
         if (config.isGuiEnabled()) SnakeApplication.main(args);
         else if (Objects.equals(config.getAgent(), "QL")) runHeadlessQL(config);
             else if (Objects.equals(config.getAgent(), "DQN")) runHeadlessDQN(config);
     }
 
-    private static void runHeadlessQL(GameConfig config) {
+    private static void runHeadlessQL(Config config) {
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         QLAgent agent = new QLAgent();
         agent.setLearning(config.getAgentAlpha(), config.getAgentGamma());
@@ -37,7 +37,7 @@ public class Launcher {
         System.out.println("Game state: " + game.getGameState());
     }
 
-    private static void runHeadlessDQN(GameConfig config) {
+    private static void runHeadlessDQN(Config config) {
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         DQNAgent agent = new DQNAgent(config.getGridWidth(), config.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
         agent.setLearningRate(config.getAgentAlpha());

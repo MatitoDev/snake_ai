@@ -1,7 +1,7 @@
 package dev.matito.snake_ai.ql;
 
 import dev.matito.snake_ai.Direction;
-import dev.matito.snake_ai.GameConfig;
+import dev.matito.snake_ai.Config;
 import dev.matito.snake_ai.SnakeGame;
 
 import java.io.BufferedInputStream;
@@ -56,7 +56,7 @@ public final class QLAgent {
 	}
 
 	public QLAgent(long seed) {
-		GameConfig config = new GameConfig("config.properties");
+		Config config = new Config("config.properties");
 		this.epsilon = config.getAgentEpsilonStart();
 		this.epsilonDecay = config.getEpsilonDecay();
 		this.epsilonMin = config.getAgentEpsilonMin();
