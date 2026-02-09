@@ -51,6 +51,10 @@ public final class QLAgent {
 	private int prevScore = Integer.MIN_VALUE;
 	private boolean prevTerminal;
 
+	private volatile int lastStateId = -1;
+	private volatile int lastAction = -1;
+
+
 	public QLAgent() {
 		this(123456789L);
 	}
@@ -58,11 +62,12 @@ public final class QLAgent {
 	public QLAgent(long seed) {
 		Config config = new Config("config.properties");
 		this.persistenceFile = new File(DEFAULT_QTABLE_FILE);
-		if (config.isEpsilonOverride()) {
+		boolean loaded = loadIfExists();
+		if (config.isEpsilonOverride() || !loaded) {
 			this.epsilon = config.getAgentEpsilonStart();
 			this.epsilonDecay = config.getEpsilonDecay();
 			this.epsilonMin = config.getAgentEpsilonMin();
-		} else loadIfExists();
+		}
 		this.rnd = new Random(seed);
 		installShutdownHook();
 		this.lastAutoSaveMillis = System.currentTimeMillis();
@@ -113,6 +118,9 @@ public final class QLAgent {
 
 		int action = selectAction(stateId);
 		Direction outDir = applyRelativeAction(state.getDirection(), action);
+
+		lastStateId = stateId;
+		lastAction = action;
 
 		prevStateId = stateId;
 		prevAction = action;
@@ -316,17 +324,18 @@ public final class QLAgent {
 		}
 	}
 
-	private void loadIfExists() {
+	private boolean loadIfExists() {
 		if (persistenceFile == null) {
 			if (new Config("config.properties").isEpsilonOverride()) System.out.println("WARNING: epsilon override is enabled but no weights file specified!");
-			return;
+			return false;
 		}
-		if (!persistenceFile.isFile()) return;
+		if (!persistenceFile.isFile()) return false;
 		try {
 			load(persistenceFile);
 		} catch (IOException ignored) {
-			// ignore
+			return false;
 		}
+		return true;
 	}
 
 	private void installShutdownHook() {
@@ -400,4 +409,35 @@ public final class QLAgent {
 	public double getEpsilonMin() {
 		return epsilonMin;
 	}
+
+	public double getEpsilonDecay() {
+		return epsilonDecay;
+	}
+
+	public double getAlpha() { return alpha; }
+	public double getGamma() { return gamma; }
+	public int getLastStateId() { return lastStateId; }
+	public int getLastAction() { return lastAction; }
+
+	public double[] getQRow(int stateId) {
+		if (stateId < 0 || stateId >= NUM_STATES) return new double[] {0.0, 0.0, 0.0};
+		return q[stateId].clone();
+	}
+
+	public double[][] getQSlice(int start, int limit) {
+		if (limit <= 0) return new double[0][0];
+		start = Math.max(0, Math.min(NUM_STATES - 1, start));
+		int end = Math.min(NUM_STATES, start + limit);
+		double[][] out = new double[end - start][NUM_ACTIONS];
+		for (int i = start; i < end; i++) {
+			out[i - start][0] = q[i][0];
+			out[i - start][1] = q[i][1];
+			out[i - start][2] = q[i][2];
+		}
+		return out;
+	}
+
+	public static int getNumStates() { return NUM_STATES; }
+	public static int getNumActions() { return NUM_ACTIONS; }
+
 }

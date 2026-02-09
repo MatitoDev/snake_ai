@@ -1,7 +1,10 @@
 services:
   snakeai:
     build: .
+    restart: unless-stopped
     volumes:
       - ./:/data
     environment:
       JAVA_OPTS: ""
+    ports:
+      - "127.0.0.1:18080:8080"

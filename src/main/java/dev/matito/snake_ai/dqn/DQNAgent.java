@@ -42,9 +42,14 @@ public final class DQNAgent {
 	private int prevAction = -1;
 	private int prevScore = 0;
 
+	private volatile double[] lastQValues = null;
+	private volatile long lastSummaryMillis = 0L;
+	private volatile String lastSummaryJson = null;
+	private final int inputSize;
+
 	public DQNAgent(int gridWidth, int gridHeight, int replayCapacity, long seed) {
 		Config config = new Config("config.properties");
-		int inputSize = 4 * gridWidth * gridHeight;
+		this.inputSize = 4 * gridWidth * gridHeight;
 		this.onlineNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed);
 		this.targetNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed + 1);
 
@@ -146,6 +151,7 @@ public final class DQNAgent {
 		}
 
 		double[] qValues = onlineNetwork.forward(state.getGridData());
+		lastQValues = qValues.clone();
 		int bestAction = 0;
 		double bestValue = qValues[0];
 
@@ -363,4 +369,218 @@ public final class DQNAgent {
 	public int getReplayBufferSize() {
 		return replayBuffer.size();
 	}
+
+	public double getLearningRate() { return alpha; }
+	public double getGamma() { return gamma; }
+	public double[] getLastQValues() { return lastQValues == null ? null : lastQValues.clone(); }
+
+	public String getOnlineNetworkSummaryJson() {
+		long now = System.currentTimeMillis();
+		String cached = lastSummaryJson;
+		if (cached != null && (now - lastSummaryMillis) < 1500L) return cached;
+		String j = buildNetworkSummaryJson(onlineNetwork);
+		lastSummaryJson = j;
+		lastSummaryMillis = now;
+		return j;
+	}
+
+	private static String buildNetworkSummaryJson(NeuralNetwork n) {
+		StringBuilder sb = new StringBuilder(1024);
+		sb.append('{');
+		sb.append("\"w1\":"); appendMatrixStats(sb, n.getW1()); sb.append(',');
+		sb.append("\"b1\":"); appendArrayStats(sb, n.getB1()); sb.append(',');
+		sb.append("\"w2\":"); appendMatrixStats(sb, n.getW2()); sb.append(',');
+		sb.append("\"b2\":"); appendArrayStats(sb, n.getB2()); sb.append(',');
+		sb.append("\"w3\":"); appendMatrixStats(sb, n.getW3()); sb.append(',');
+		sb.append("\"b3\":"); appendArrayStats(sb, n.getB3());
+		sb.append('}');
+		return sb.toString();
+	}
+
+	private static void appendMatrixStats(StringBuilder sb, double[][] m) {
+		Stats s = new Stats();
+		for (double[] row : m) for (double v : row) s.add(v);
+		appendStatsObj(sb, s);
+	}
+
+	private static void appendArrayStats(StringBuilder sb, double[] a) {
+		Stats s = new Stats();
+		for (double v : a) s.add(v);
+		appendStatsObj(sb, s);
+	}
+
+	private static void appendStatsObj(StringBuilder sb, Stats s) {
+		sb.append('{');
+		sb.append("\"n\":").append(s.n).append(',');
+		sb.append("\"min\":").append(s.min).append(',');
+		sb.append("\"max\":").append(s.max).append(',');
+		sb.append("\"mean\":").append(s.mean).append(',');
+		sb.append("\"std\":").append(s.std());
+		sb.append('}');
+	}
+
+	private static final class Stats {
+		long n = 0L;
+		double mean = 0.0;
+		double m2 = 0.0;
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		void add(double x) {
+			n++;
+			if (x < min) min = x;
+			if (x > max) max = x;
+			double delta = x - mean;
+			mean += delta / n;
+			double delta2 = x - mean;
+			m2 += delta * delta2;
+		}
+		double std() {
+			if (n <= 1) return 0.0;
+			double var = m2 / (n - 1);
+			return Math.sqrt(Math.max(0.0, var));
+		}
+	}
+
+	public String getNetworkSliceJson(
+			String net,
+			int inStart, int inCount,
+			int h1Start, int h1Count,
+			int h2Start, int h2Count
+	) {
+		NeuralNetwork n = "target".equalsIgnoreCase(net) ? targetNetwork : onlineNetwork;
+
+		inCount = clampInt(inCount, 1, 32);
+		h1Count = clampInt(h1Count, 1, 32);
+		h2Count = clampInt(h2Count, 1, 32);
+
+		inStart = clampInt(inStart, 0, inputSize - 1);
+		h1Start = clampInt(h1Start, 0, HIDDEN_SIZE_1 - 1);
+		h2Start = clampInt(h2Start, 0, HIDDEN_SIZE_2 - 1);
+
+		int inEnd = Math.min(inputSize, inStart + inCount);
+		int h1End = Math.min(HIDDEN_SIZE_1, h1Start + h1Count);
+		int h2End = Math.min(HIDDEN_SIZE_2, h2Start + h2Count);
+
+		double[][] w1 = n.getW1();
+		double[] b1 = n.getB1();
+		double[][] w2 = n.getW2();
+		double[] b2 = n.getB2();
+		double[][] w3 = n.getW3();
+		double[] b3 = n.getB3();
+
+		StringBuilder sb = new StringBuilder(80_000);
+		sb.append('{');
+
+		sb.append("\"net\":\"").append(jsonEscape(net == null ? "online" : net)).append("\",");
+
+		sb.append("\"sizes\":{");
+		sb.append("\"input\":").append(inputSize).append(',');
+		sb.append("\"h1\":").append(HIDDEN_SIZE_1).append(',');
+		sb.append("\"h2\":").append(HIDDEN_SIZE_2).append(',');
+		sb.append("\"out\":").append(NUM_ACTIONS);
+		sb.append("},");
+
+		sb.append("\"slice\":{");
+		sb.append("\"inStart\":").append(inStart).append(',');
+		sb.append("\"inCount\":").append(inEnd - inStart).append(',');
+		sb.append("\"h1Start\":").append(h1Start).append(',');
+		sb.append("\"h1Count\":").append(h1End - h1Start).append(',');
+		sb.append("\"h2Start\":").append(h2Start).append(',');
+		sb.append("\"h2Count\":").append(h2End - h2Start);
+		sb.append("},");
+
+		// b1
+		sb.append("\"b1\":[");
+		for (int i = h1Start; i < h1End; i++) {
+			if (i > h1Start) sb.append(',');
+			sb.append(b1[i]);
+		}
+		sb.append("],");
+
+		// w1: [h1Count][inCount]
+		sb.append("\"w1\":[");
+		for (int i = h1Start; i < h1End; i++) {
+			if (i > h1Start) sb.append(',');
+			sb.append('[');
+			for (int j = inStart; j < inEnd; j++) {
+				if (j > inStart) sb.append(',');
+				sb.append(w1[i][j]);
+			}
+			sb.append(']');
+		}
+		sb.append("],");
+
+		// b2
+		sb.append("\"b2\":[");
+		for (int i = h2Start; i < h2End; i++) {
+			if (i > h2Start) sb.append(',');
+			sb.append(b2[i]);
+		}
+		sb.append("],");
+
+		// w2: [h2Count][h1Count]
+		sb.append("\"w2\":[");
+		for (int i = h2Start; i < h2End; i++) {
+			if (i > h2Start) sb.append(',');
+			sb.append('[');
+			for (int j = h1Start; j < h1End; j++) {
+				if (j > h1Start) sb.append(',');
+				sb.append(w2[i][j]);
+			}
+			sb.append(']');
+		}
+		sb.append("],");
+
+		// b3
+		sb.append("\"b3\":[");
+		for (int i = 0; i < NUM_ACTIONS; i++) {
+			if (i > 0) sb.append(',');
+			sb.append(b3[i]);
+		}
+		sb.append("],");
+
+		// w3: [out][h2Count]
+		sb.append("\"w3\":[");
+		for (int i = 0; i < NUM_ACTIONS; i++) {
+			if (i > 0) sb.append(',');
+			sb.append('[');
+			for (int j = h2Start; j < h2End; j++) {
+				if (j > h2Start) sb.append(',');
+				sb.append(w3[i][j]);
+			}
+			sb.append(']');
+		}
+		sb.append("]");
+
+		sb.append('}');
+		return sb.toString();
+	}
+
+	private static int clampInt(int v, int lo, int hi) {
+		if (v < lo) return lo;
+		if (v > hi) return hi;
+		return v;
+	}
+
+	private static String jsonEscape(String s) {
+		if (s == null) return "";
+		StringBuilder sb = new StringBuilder(s.length() + 16);
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			switch (c) {
+				case '"' -> sb.append("\\\"");
+				case '\\' -> sb.append("\\\\");
+				case '\n' -> sb.append("\\n");
+				case '\r' -> sb.append("\\r");
+				case '\t' -> sb.append("\\t");
+				default -> {
+					if (c < 0x20) sb.append(' ');
+					else sb.append(c);
+				}
+			}
+		}
+		return sb.toString();
+	}
+
+
 }

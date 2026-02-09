@@ -10,7 +10,10 @@ module dev.matito.snake_ai {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
+	requires jdk.httpserver;
 
-    opens dev.matito.snake_ai to javafx.fxml;
+	opens dev.matito.snake_ai to javafx.fxml;
     exports dev.matito.snake_ai;
+	exports dev.matito.snake_ai.dashboard;
+	opens dev.matito.snake_ai.dashboard to javafx.fxml;
 }
