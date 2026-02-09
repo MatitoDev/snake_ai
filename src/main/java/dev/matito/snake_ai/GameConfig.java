@@ -10,6 +10,8 @@ public class GameConfig {
     private final int gridHeight;
     private final boolean guiEnabled;
     private final int gameSpeed;
+    private final double agentEpsilonMin;
+    private final double epsilonDecay;
 
     public GameConfig(String configPath) {
         Properties props = new Properties();
@@ -19,6 +21,8 @@ public class GameConfig {
             this.gridHeight = Integer.parseInt(props.getProperty("grid.height", "20"));
             this.guiEnabled = Boolean.parseBoolean(props.getProperty("gui.enabled", "true"));
             this.gameSpeed = Integer.parseInt(props.getProperty("game.speed", "150"));
+            this.agentEpsilonMin = Double.parseDouble(props.getProperty("agent.epsilon.min", "0.005"));
+            this.epsilonDecay = Double.parseDouble(props.getProperty("agent.epsilon.decay", "0.9995"));
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config: " + configPath, e);
         }
@@ -38,5 +42,13 @@ public class GameConfig {
 
     public int getGameSpeed() {
         return gameSpeed;
+    }
+
+    public double getAgentEpsilonMin() {
+        return agentEpsilonMin;
+    }
+
+    public double getEpsilonDecay() {
+        return epsilonDecay;
     }
 }

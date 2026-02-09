@@ -20,9 +20,14 @@ public class Launcher {
 
         System.out.println("Running in headless mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
-        
-        while (game.getGameState() != GameState.WON) {
+        int i = 1;
+        while (game.getGameState() != GameState.WON || agent.getEpsilon() == 0.05) {
             game.setDirection(agent.getAIDecision(State.fromGame(game)));
+            if (game.getGameState() == GameState.GAME_OVER) {
+                System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                game.reset();
+                i++;
+            }
             game.step();
         }
         

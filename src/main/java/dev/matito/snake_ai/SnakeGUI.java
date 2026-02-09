@@ -61,7 +61,10 @@ public class SnakeGUI {
             public void handle(long now) {
                 if (now - lastUpdate >= gameSpeed * 1_000_000L) {
                     game.setDirection(agent.getAIDecision(State.fromGame(game)));
-                    if (game.getGameState() == GameState.GAME_OVER) game.reset();
+                    if (game.getGameState() == GameState.GAME_OVER) {
+                        System.out.println(game.getScore() + " - " + agent.getEpsilon());
+                        game.reset();
+                    }
                     game.step();
                     render();
                     lastUpdate = now;

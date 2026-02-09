@@ -25,7 +25,7 @@ public class SnakeGame {
         this.gridWidth = gridWidth;
         this.gridHeight = gridHeight;
         this.snake = new ArrayList<>();
-        this.random = new Random();
+        this.random = new Random(123456789L);
         this.score = 0;
         this.ateFood = false;
         reset();
@@ -76,11 +76,20 @@ public class SnakeGame {
             snake.remove(snake.size() - 1);
             ateFood = false;
         }
+
+        checkWinCondition();
+    }
+
+    private void checkWinCondition() {
+        if (snake.size() == gridWidth * gridHeight) {
+            gameState = GameState.WON;
+            food = null;
+        }
     }
 
     private boolean isOutOfBounds(Position pos) {
         return pos.getX() < 0 || pos.getX() >= gridWidth ||
-               pos.getY() < 0 || pos.getY() >= gridHeight;
+                pos.getY() < 0 || pos.getY() >= gridHeight;
     }
 
     private void spawnFood() {
@@ -96,9 +105,12 @@ public class SnakeGame {
             }
         }
 
-        if (!availablePositions.isEmpty()) {
-            food = availablePositions.get(random.nextInt(availablePositions.size()));
+        if (availablePositions.isEmpty()) {
+            checkWinCondition();
+            return;
         }
+
+        food = availablePositions.get(random.nextInt(availablePositions.size()));
     }
 
     public List<Position> getSnakePositions() {

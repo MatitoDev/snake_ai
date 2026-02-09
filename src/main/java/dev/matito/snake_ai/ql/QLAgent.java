@@ -1,6 +1,7 @@
 package dev.matito.snake_ai.ql;
 
 import dev.matito.snake_ai.Direction;
+import dev.matito.snake_ai.GameConfig;
 import dev.matito.snake_ai.SnakeGame;
 
 import java.io.BufferedInputStream;
@@ -11,6 +12,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Random;
 
 /**
@@ -22,16 +27,23 @@ import java.util.Random;
 public final class QLAgent {
 	private static final int NUM_STATES = 1 << 11; // 2048
 	private static final int NUM_ACTIONS = 3;
+	private static final String DEFAULT_QTABLE_FILE = "qtable.bin";
 
 	private final double[][] q = new double[NUM_STATES][NUM_ACTIONS];
 	private final Random rnd;
+	private final File persistenceFile;
+
+	private int autoSaveEverySteps = 200;
+	private long autoSaveEveryMillis = 2000L;
+	private long steps = 0L;
+	private long lastAutoSaveMillis = 0L;
 
 	private double alpha = 0.10;
 	private double gamma = 0.90;
 
-	private double epsilon = 1.00;
-	private double epsilonMin = 0.05;
-	private double epsilonDecay = 0.9995;
+	private double epsilon = 0.0;
+	private double epsilonMin;
+	private double epsilonDecay;
 
 	private int prevStateId = -1;
 	private int prevAction = -1;
@@ -44,7 +56,19 @@ public final class QLAgent {
 	}
 
 	public QLAgent(long seed) {
+		GameConfig config = new GameConfig("config.properties");
+		this.epsilonDecay = config.getEpsilonDecay();
+		this.epsilonMin = config.getAgentEpsilonMin();
 		this.rnd = new Random(seed);
+		this.persistenceFile = new File(DEFAULT_QTABLE_FILE);
+		loadIfExists();
+		installShutdownHook();
+		this.lastAutoSaveMillis = System.currentTimeMillis();
+	}
+
+	public void setAutoSave(int everySteps, long everyMillis) {
+		this.autoSaveEverySteps = Math.max(0, everySteps);
+		this.autoSaveEveryMillis = Math.max(0L, everyMillis);
 	}
 
 	/** Resets episode scoped memory (previous transition). */
@@ -97,6 +121,8 @@ public final class QLAgent {
 		if (epsilon > epsilonMin) {
 			epsilon = Math.max(epsilonMin, epsilon * epsilonDecay);
 		}
+
+		maybeAutoSave();
 
 		return outDir;
 	}
@@ -271,6 +297,57 @@ public final class QLAgent {
 		return v;
 	}
 
+	private void maybeAutoSave() {
+		if (persistenceFile == null) return;
+
+		steps++;
+		long now = System.currentTimeMillis();
+		boolean bySteps = autoSaveEverySteps > 0 && (steps % autoSaveEverySteps) == 0;
+		boolean byTime = autoSaveEveryMillis > 0 && (now - lastAutoSaveMillis) >= autoSaveEveryMillis;
+		if (!bySteps && !byTime) return;
+
+		try {
+			saveAtomic(persistenceFile);
+			lastAutoSaveMillis = now;
+		} catch (IOException ignored) {
+			// ignore
+		}
+	}
+
+	private void loadIfExists() {
+		if (persistenceFile == null) return;
+		if (!persistenceFile.isFile()) return;
+		try {
+			load(persistenceFile);
+		} catch (IOException ignored) {
+			// ignore
+		}
+	}
+
+	private void installShutdownHook() {
+		if (persistenceFile == null) return;
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			try {
+				saveAtomic(persistenceFile);
+			} catch (IOException ignored) {
+				// ignore
+			}
+		}, "qtableSave"));
+	}
+
+	private void saveAtomic(File file) throws IOException {
+		Path target = file.toPath();
+		Path dir = target.getParent();
+		if (dir != null) Files.createDirectories(dir);
+		Path tmp = target.resolveSibling(target.getFileName().toString() + ".tmp");
+		save(tmp.toFile());
+		try {
+			Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		} catch (AtomicMoveNotSupportedException e) {
+			Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+
 	public void save(File file) throws IOException {
 		try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
 			out.writeInt(NUM_STATES);
@@ -309,5 +386,9 @@ public final class QLAgent {
 				}
 			}
 		}
+	}
+
+	public double getEpsilon() {
+		return epsilon;
 	}
 }
