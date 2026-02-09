@@ -44,17 +44,19 @@ public final class DQNAgent {
 
 	public DQNAgent(int gridWidth, int gridHeight, int replayCapacity, long seed) {
 		Config config = new Config("config.properties");
-		this.persistenceFile = new File(DEFAULT_WEIGHTS_FILE);
-		if (config.isEpsilonOverride()) {
-			this.epsilon = config.getAgentEpsilonStart();
-			this.epsilonDecay = config.getEpsilonDecay();
-			this.epsilonMin = config.getAgentEpsilonMin();
-		} else loadIfExists();
 		int inputSize = 4 * gridWidth * gridHeight;
 		this.onlineNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed);
 		this.targetNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed + 1);
-		this.targetNetwork.copyWeightsFrom(onlineNetwork);
+
 		this.replayBuffer = new ReplayBuffer(replayCapacity, seed + 2);
+		this.persistenceFile = new File(DEFAULT_WEIGHTS_FILE);
+		boolean loaded = loadIfExists();
+		if (config.isEpsilonOverride() || !loaded) {
+			this.epsilon = config.getAgentEpsilonStart();
+			this.epsilonDecay = config.getEpsilonDecay();
+			this.epsilonMin = config.getAgentEpsilonMin();
+		}
+		this.targetNetwork.copyWeightsFrom(onlineNetwork);
 		this.random = new Random(seed + 3);
 		installShutdownHook();
 		this.lastAutoSaveMillis = System.currentTimeMillis();
@@ -264,16 +266,18 @@ public final class DQNAgent {
 		}
 	}
 
-	private void loadIfExists() {
+	private boolean loadIfExists() {
 		if (persistenceFile == null) {
 			if (new Config("config.properties").isEpsilonOverride()) System.out.println("WARNING: epsilon override is enabled but no weights file specified!");
-			return;
+			return false;
 		};
-		if (!persistenceFile.isFile()) return;
+		if (!persistenceFile.isFile()) return false;
 		try {
 			load(persistenceFile);
 		} catch (IOException ignored) {
+			return false;
 		}
+		return true;
 	}
 
 	private void installShutdownHook() {

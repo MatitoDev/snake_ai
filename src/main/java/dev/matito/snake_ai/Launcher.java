@@ -67,10 +67,11 @@ public class Launcher {
             game.setDirection(agent.decide(game));
             if (game.getGameState() == GameState.GAME_OVER) {
                 System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
-                agent.train(config.getAgentDqnBatch());
                 game.reset();
+                agent.resetEpisode();
                 i++;
             }
+            agent.train(config.getAgentDqnBatch());
             game.step();
         }
 

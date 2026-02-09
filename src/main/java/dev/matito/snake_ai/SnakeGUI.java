@@ -66,6 +66,7 @@ public class SnakeGUI {
                     if (game.getGameState() == GameState.GAME_OVER) {
                         System.out.println(game.getScore() + " - " + agent.getEpsilon());
                         game.reset();
+                        agent.resetEpisode();
                     }
                     game.step();
                     render();
