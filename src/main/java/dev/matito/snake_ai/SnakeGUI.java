@@ -56,7 +56,9 @@ public class SnakeGUI {
     }
 
     public void startQL() {
+        GameConfig config = new GameConfig("config.properties");
         QLAgent agent = new QLAgent();
+        agent.setLearning(config.getAgentAlpha(), config.getAgentGamma());
         gameLoop = new AnimationTimer() {
             @Override
             public void handle(long now) {
@@ -78,6 +80,8 @@ public class SnakeGUI {
     public void startDQN() {
         GameConfig config = new GameConfig("config.properties");
         DQNAgent agent = new DQNAgent(game.getGridWidth(), game.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
+        agent.setLearningRate(config.getAgentAlpha());
+        agent.setGamma(config.getAgentGamma());
         agent.resetEpisode();
         gameLoop = new AnimationTimer() {
             @Override

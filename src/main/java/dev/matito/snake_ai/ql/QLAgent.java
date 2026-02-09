@@ -41,7 +41,7 @@ public final class QLAgent {
 	private double alpha = 0.10;
 	private double gamma = 0.90;
 
-	private double epsilon = 0.0;
+	private double epsilon;
 	private double epsilonMin;
 	private double epsilonDecay;
 

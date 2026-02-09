@@ -11,6 +11,8 @@ public class GameConfig {
     private final boolean guiEnabled;
     private final int gameSpeed;
     private final String agent;
+    private final double agentAlpha;
+    private final double agentGamma;
     private final int agentDqnReplay;
     private final int agentDqnBatch;
     private final double agentEpsilonStart;
@@ -26,6 +28,8 @@ public class GameConfig {
             this.guiEnabled = Boolean.parseBoolean(props.getProperty("gui.enabled", "true"));
             this.gameSpeed = Integer.parseInt(props.getProperty("game.speed", "150"));
             this.agent = props.getProperty("agent", "QL");
+            this.agentAlpha = Double.parseDouble(props.getProperty("agent.alpha", "0.1"));
+            this.agentGamma = Double.parseDouble(props.getProperty("agent.gamma", "0.9"));
             this.agentDqnReplay = Integer.parseInt(props.getProperty("agent.dqn.replay", "16"));
             this.agentDqnBatch = Integer.parseInt(props.getProperty("agent.dqn.batch", "8"));
             this.agentEpsilonStart = Double.parseDouble(props.getProperty("agent.epsilon.start", "1.0"));
@@ -53,6 +57,14 @@ public class GameConfig {
 
     public int getGameSpeed() {
         return gameSpeed;
+    }
+
+    public double getAgentAlpha() {
+        return agentAlpha;
+    }
+
+    public double getAgentGamma() {
+        return agentGamma;
     }
 
     public int getAgentDqnReplay() {

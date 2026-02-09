@@ -18,6 +18,7 @@ public class Launcher {
     private static void runHeadlessQL(GameConfig config) {
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         QLAgent agent = new QLAgent();
+        agent.setLearning(config.getAgentAlpha(), config.getAgentGamma());
 
         System.out.println("Running in headless QL mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
@@ -39,6 +40,8 @@ public class Launcher {
     private static void runHeadlessDQN(GameConfig config) {
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         DQNAgent agent = new DQNAgent(config.getGridWidth(), config.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
+        agent.setLearningRate(config.getAgentAlpha());
+        agent.setGamma(config.getAgentGamma());
         agent.resetEpisode();
 
         System.out.println("Running in headless DQN mode");
