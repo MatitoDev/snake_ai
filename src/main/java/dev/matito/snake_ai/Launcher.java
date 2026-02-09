@@ -38,7 +38,7 @@ public class Launcher {
 
     private static void runHeadlessDQN(GameConfig config) {
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
-        DQNAgent agent = new DQNAgent(config.getGridWidth(), config.getGridHeight(), 8, 123456789L);
+        DQNAgent agent = new DQNAgent(config.getGridWidth(), config.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
         agent.resetEpisode();
 
         System.out.println("Running in headless DQN mode");
@@ -51,7 +51,7 @@ public class Launcher {
                 game.reset();
                 i++;
             }
-            agent.train(4);
+            agent.train(config.getAgentDqnBatch());
             game.step();
         }
 

@@ -76,7 +76,8 @@ public class SnakeGUI {
     }
 
     public void startDQN() {
-        DQNAgent agent = new DQNAgent(game.getGridWidth(), game.getGridHeight(), 32, 123456789L);
+        GameConfig config = new GameConfig("config.properties");
+        DQNAgent agent = new DQNAgent(game.getGridWidth(), game.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
         agent.resetEpisode();
         gameLoop = new AnimationTimer() {
             @Override
@@ -87,7 +88,7 @@ public class SnakeGUI {
                         System.out.println(game.getScore() + " - " + agent.getEpsilon());
                         game.reset();
                     }
-                    agent.train(8);
+                    agent.train(config.getAgentDqnBatch());
                     game.step();
                     render();
                     lastUpdate = now;

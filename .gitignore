@@ -44,3 +44,4 @@ bin/
 /.idea/discord.xml
 java_pid53263.hprof
 qtable.bin
+dqn_weights.bin

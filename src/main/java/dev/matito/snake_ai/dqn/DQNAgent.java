@@ -1,6 +1,7 @@
 package dev.matito.snake_ai.dqn;
 
 import dev.matito.snake_ai.Direction;
+import dev.matito.snake_ai.GameConfig;
 import dev.matito.snake_ai.SnakeGame;
 
 import java.io.*;
@@ -25,7 +26,7 @@ public final class DQNAgent {
 
 	private double alpha = 0.001;
 	private double gamma = 0.95;
-	private double epsilon ;
+	private double epsilon;
 	private double epsilonMin;
 	private double epsilonDecay;
 
@@ -42,6 +43,10 @@ public final class DQNAgent {
 	private int prevScore = 0;
 
 	public DQNAgent(int gridWidth, int gridHeight, int replayCapacity, long seed) {
+		GameConfig config = new GameConfig("config.properties");
+		this.epsilon = config.getAgentEpsilonStart();
+		this.epsilonDecay = config.getEpsilonDecay();
+		this.epsilonMin = config.getAgentEpsilonMin();
 		int inputSize = 4 * gridWidth * gridHeight;
 		this.onlineNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed);
 		this.targetNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed + 1);
@@ -160,13 +165,6 @@ public final class DQNAgent {
 			outputError[i] = targetOutput[i] - output[i];
 		}
 
-		double[][] w1Delta = new double[HIDDEN_SIZE_1][input.length];
-		double[] b1Delta = new double[HIDDEN_SIZE_1];
-		double[][] w2Delta = new double[HIDDEN_SIZE_2][HIDDEN_SIZE_1];
-		double[] b2Delta = new double[HIDDEN_SIZE_2];
-		double[][] w3Delta = new double[NUM_ACTIONS][HIDDEN_SIZE_2];
-		double[] b3Delta = new double[NUM_ACTIONS];
-
 		double[] h2Error = new double[HIDDEN_SIZE_2];
 		for (int i = 0; i < HIDDEN_SIZE_2; i++) {
 			for (int j = 0; j < NUM_ACTIONS; j++) {
@@ -187,28 +185,32 @@ public final class DQNAgent {
 			}
 		}
 
+		double[][] w3 = onlineNetwork.getW3();
+		double[] b3 = onlineNetwork.getB3();
 		for (int i = 0; i < NUM_ACTIONS; i++) {
 			for (int j = 0; j < HIDDEN_SIZE_2; j++) {
-				w3Delta[i][j] = alpha * outputError[i] * onlineNetwork.getH2()[j];
+				w3[i][j] += alpha * outputError[i] * onlineNetwork.getH2()[j];
 			}
-			b3Delta[i] = alpha * outputError[i];
+			b3[i] += alpha * outputError[i];
 		}
 
+		double[][] w2 = onlineNetwork.getW2();
+		double[] b2 = onlineNetwork.getB2();
 		for (int i = 0; i < HIDDEN_SIZE_2; i++) {
 			for (int j = 0; j < HIDDEN_SIZE_1; j++) {
-				w2Delta[i][j] = alpha * h2Error[i] * onlineNetwork.getH1()[j];
+				w2[i][j] += alpha * h2Error[i] * onlineNetwork.getH1()[j];
 			}
-			b2Delta[i] = alpha * h2Error[i];
+			b2[i] += alpha * h2Error[i];
 		}
 
+		double[][] w1 = onlineNetwork.getW1();
+		double[] b1 = onlineNetwork.getB1();
 		for (int i = 0; i < HIDDEN_SIZE_1; i++) {
 			for (int j = 0; j < input.length; j++) {
-				w1Delta[i][j] = alpha * h1Error[i] * input[j];
+				w1[i][j] += alpha * h1Error[i] * input[j];
 			}
-			b1Delta[i] = alpha * h1Error[i];
+			b1[i] += alpha * h1Error[i];
 		}
-
-		onlineNetwork.updateWeights(w1Delta, b1Delta, w2Delta, b2Delta, w3Delta, b3Delta);
 	}
 
 	private double computeReward(DQNState prev, DQNState current) {
@@ -321,6 +323,7 @@ public final class DQNAgent {
 
 			onlineNetwork.load(in);
 			targetNetwork.load(in);
+			System.out.println("loaded from file");
 		}
 	}
 
