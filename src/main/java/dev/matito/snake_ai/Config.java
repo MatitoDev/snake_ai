@@ -15,6 +15,7 @@ public class Config {
     private final double agentGamma;
     private final int agentDqnReplay;
     private final int agentDqnBatch;
+    private final boolean epsilonOverride;
     private final double agentEpsilonStart;
     private final double agentEpsilonMin;
     private final double epsilonDecay;
@@ -32,6 +33,7 @@ public class Config {
             this.agentGamma = Double.parseDouble(props.getProperty("agent.gamma", "0.9"));
             this.agentDqnReplay = Integer.parseInt(props.getProperty("agent.dqn.replay", "16"));
             this.agentDqnBatch = Integer.parseInt(props.getProperty("agent.dqn.batch", "8"));
+            this.epsilonOverride = Boolean.parseBoolean(props.getProperty("agent.epsilon.override", "false"));
             this.agentEpsilonStart = Double.parseDouble(props.getProperty("agent.epsilon.start", "1.0"));
             this.agentEpsilonMin = Double.parseDouble(props.getProperty("agent.epsilon.min", "0.005"));
             this.epsilonDecay = Double.parseDouble(props.getProperty("agent.epsilon.decay", "0.9995"));
@@ -73,6 +75,10 @@ public class Config {
 
     public int getAgentDqnBatch() {
         return agentDqnBatch;
+    }
+
+    public boolean isEpsilonOverride() {
+        return epsilonOverride;
     }
 
     public double getAgentEpsilonMin() {

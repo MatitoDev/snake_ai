@@ -57,9 +57,11 @@ public final class QLAgent {
 
 	public QLAgent(long seed) {
 		Config config = new Config("config.properties");
-		this.epsilon = config.getAgentEpsilonStart();
-		this.epsilonDecay = config.getEpsilonDecay();
-		this.epsilonMin = config.getAgentEpsilonMin();
+		if (config.isEpsilonOverride()) {
+			this.epsilon = config.getAgentEpsilonStart();
+			this.epsilonDecay = config.getEpsilonDecay();
+			this.epsilonMin = config.getAgentEpsilonMin();
+		}
 		this.rnd = new Random(seed);
 		this.persistenceFile = new File(DEFAULT_QTABLE_FILE);
 		loadIfExists();
@@ -316,7 +318,10 @@ public final class QLAgent {
 	}
 
 	private void loadIfExists() {
-		if (persistenceFile == null) return;
+		if (persistenceFile == null) {
+			if (new Config("config.properties").isEpsilonOverride()) System.out.println("WARNING: epsilon override is enabled but no weights file specified!");
+			return;
+		}
 		if (!persistenceFile.isFile()) return;
 		try {
 			load(persistenceFile);

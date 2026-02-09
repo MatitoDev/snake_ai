@@ -44,9 +44,11 @@ public final class DQNAgent {
 
 	public DQNAgent(int gridWidth, int gridHeight, int replayCapacity, long seed) {
 		Config config = new Config("config.properties");
-		this.epsilon = config.getAgentEpsilonStart();
-		this.epsilonDecay = config.getEpsilonDecay();
-		this.epsilonMin = config.getAgentEpsilonMin();
+		if (config.isEpsilonOverride()) {
+			this.epsilon = config.getAgentEpsilonStart();
+			this.epsilonDecay = config.getEpsilonDecay();
+			this.epsilonMin = config.getAgentEpsilonMin();
+		}
 		int inputSize = 4 * gridWidth * gridHeight;
 		this.onlineNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed);
 		this.targetNetwork = new NeuralNetwork(inputSize, HIDDEN_SIZE_1, HIDDEN_SIZE_2, NUM_ACTIONS, seed + 1);
@@ -265,7 +267,10 @@ public final class DQNAgent {
 	}
 
 	private void loadIfExists() {
-		if (persistenceFile == null) return;
+		if (persistenceFile == null) {
+			if (new Config("config.properties").isEpsilonOverride()) System.out.println("WARNING: epsilon override is enabled but no weights file specified!");
+			return;
+		};
 		if (!persistenceFile.isFile()) return;
 		try {
 			load(persistenceFile);
