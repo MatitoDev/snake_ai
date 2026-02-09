@@ -10,6 +10,8 @@ public class GameConfig {
     private final int gridHeight;
     private final boolean guiEnabled;
     private final int gameSpeed;
+    private final String agent;
+    private final double agentEpsilonStart;
     private final double agentEpsilonMin;
     private final double epsilonDecay;
 
@@ -21,6 +23,8 @@ public class GameConfig {
             this.gridHeight = Integer.parseInt(props.getProperty("grid.height", "20"));
             this.guiEnabled = Boolean.parseBoolean(props.getProperty("gui.enabled", "true"));
             this.gameSpeed = Integer.parseInt(props.getProperty("game.speed", "150"));
+            this.agent = props.getProperty("game.speed", "150");
+            this.agentEpsilonStart = Double.parseDouble(props.getProperty("agent.epsilon.start", "1.0"));
             this.agentEpsilonMin = Double.parseDouble(props.getProperty("agent.epsilon.min", "0.005"));
             this.epsilonDecay = Double.parseDouble(props.getProperty("agent.epsilon.decay", "0.9995"));
         } catch (IOException e) {
@@ -48,7 +52,15 @@ public class GameConfig {
         return agentEpsilonMin;
     }
 
+    public double getAgentEpsilonStart() {
+        return agentEpsilonStart;
+    }
+
     public double getEpsilonDecay() {
         return epsilonDecay;
+    }
+
+    public String getAgent() {
+        return agent;
     }
 }

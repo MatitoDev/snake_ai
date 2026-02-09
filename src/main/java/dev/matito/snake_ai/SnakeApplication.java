@@ -5,6 +5,8 @@ import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
+import java.util.Objects;
+
 public class SnakeApplication extends Application {
     private SnakeGUI snakeGUI;
 
@@ -24,7 +26,8 @@ public class SnakeApplication extends Application {
 
 
         snakeGUI.getCanvas().requestFocus();
-        snakeGUI.start();
+        if (Objects.equals(config.getAgent(), "DQN")) snakeGUI.startDQN();
+        else snakeGUI.startQL();
     }
 
     @Override

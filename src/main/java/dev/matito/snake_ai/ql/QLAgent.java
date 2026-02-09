@@ -57,6 +57,7 @@ public final class QLAgent {
 
 	public QLAgent(long seed) {
 		GameConfig config = new GameConfig("config.properties");
+		this.epsilon = config.getAgentEpsilonStart();
 		this.epsilonDecay = config.getEpsilonDecay();
 		this.epsilonMin = config.getAgentEpsilonMin();
 		this.rnd = new Random(seed);

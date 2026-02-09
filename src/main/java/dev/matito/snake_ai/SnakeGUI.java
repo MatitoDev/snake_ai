@@ -1,5 +1,6 @@
 package dev.matito.snake_ai;
 
+import dev.matito.snake_ai.dqn.DQNAgent;
 import dev.matito.snake_ai.ql.QLAgent;
 import dev.matito.snake_ai.ql.State;
 import javafx.animation.AnimationTimer;
@@ -54,7 +55,7 @@ public class SnakeGUI {
         }
     }
 
-    public void start() {
+    public void startQL() {
         QLAgent agent = new QLAgent();
         gameLoop = new AnimationTimer() {
             @Override
@@ -65,6 +66,28 @@ public class SnakeGUI {
                         System.out.println(game.getScore() + " - " + agent.getEpsilon());
                         game.reset();
                     }
+                    game.step();
+                    render();
+                    lastUpdate = now;
+                }
+            }
+        };
+        gameLoop.start();
+    }
+
+    public void startDQN() {
+        DQNAgent agent = new DQNAgent(game.getGridWidth(), game.getGridHeight(), 32, 123456789L);
+        agent.resetEpisode();
+        gameLoop = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (now - lastUpdate >= gameSpeed * 1_000_000L) {
+                    game.setDirection(agent.decide(game));
+                    if (game.getGameState() == GameState.GAME_OVER) {
+                        System.out.println(game.getScore() + " - " + agent.getEpsilon());
+                        game.reset();
+                    }
+                    agent.train(8);
                     game.step();
                     render();
                     lastUpdate = now;

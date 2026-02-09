@@ -1,27 +1,28 @@
 package dev.matito.snake_ai;
 
+import dev.matito.snake_ai.dqn.DQNAgent;
 import dev.matito.snake_ai.ql.QLAgent;
 import dev.matito.snake_ai.ql.State;
+
+import java.util.Objects;
 
 public class Launcher {
     public static void main(String[] args) {
         GameConfig config = new GameConfig("config.properties");
 
-        if (config.isGuiEnabled()) {
-            SnakeApplication.main(args);
-        } else {
-            runHeadless(config);
-        }
+        if (config.isGuiEnabled()) SnakeApplication.main(args);
+        else if ((Objects.equals(config.getAgent(), "QL"))) runHeadlessQL(config);
+            else runHeadlessDQN(config);
     }
 
-    private static void runHeadless(GameConfig config) {
+    private static void runHeadlessQL(GameConfig config) {
         SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         QLAgent agent = new QLAgent();
 
-        System.out.println("Running in headless mode");
+        System.out.println("Running in headless QL mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
         int i = 1;
-        while (game.getGameState() != GameState.WON || agent.getEpsilon() == 0.05) {
+        while (game.getGameState() != GameState.WON || agent.getEpsilon() == config.getAgentEpsilonMin()) {
             game.setDirection(agent.getAIDecision(State.fromGame(game)));
             if (game.getGameState() == GameState.GAME_OVER) {
                 System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
@@ -30,7 +31,30 @@ public class Launcher {
             }
             game.step();
         }
-        
+
+        System.out.println("Final score: " + game.getScore());
+        System.out.println("Game state: " + game.getGameState());
+    }
+
+    private static void runHeadlessDQN(GameConfig config) {
+        SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
+        DQNAgent agent = new DQNAgent(config.getGridWidth(), config.getGridHeight(), 8, 123456789L);
+        agent.resetEpisode();
+
+        System.out.println("Running in headless DQN mode");
+        System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
+        int i = 1;
+        while (game.getGameState() != GameState.WON || agent.getEpsilon() == config.getAgentEpsilonMin()) {
+            game.setDirection(agent.decide(game));
+            if (game.getGameState() == GameState.GAME_OVER) {
+                System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                game.reset();
+                i++;
+            }
+            agent.train(4);
+            game.step();
+        }
+
         System.out.println("Final score: " + game.getScore());
         System.out.println("Game state: " + game.getGameState());
     }
