@@ -1,0 +1,7 @@
+services:
+  snakeai:
+    build: .
+    volumes:
+      - ./:/data
+    environment:
+      JAVA_OPTS: ""
