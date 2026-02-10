@@ -70,11 +70,14 @@ public class Launcher {
                     highscore = game.getScore();
                 }
                 game.reset();
+                agent.resetEpisode(); // Reset agent state for new episode
             }
         }
 
         System.out.println("Final score: " + game.getScore());
         System.out.println("Game state: " + game.getGameState());
+        
+        stats.close(); // Close stats thread
         
         try {
             logger.save("ql_training_data");
@@ -138,11 +141,14 @@ public class Launcher {
                     highscore = game.getScore();
                 }
                 game.reset();
+                agent.resetEpisode(); // Reset agent state for new episode
             }
         }
 
         System.out.println("Final score: " + game.getScore());
         System.out.println("Game state: " + game.getGameState());
+        
+        stats.close(); // Close stats thread
         
         try {
             logger.save("dqn_training_data");
