@@ -52,7 +52,7 @@ public final class DQNState {
 		int h = game.getGridHeight();
 		int planeSize = w * h;
 
-		List<Position> snake = game.getSnakePositions();
+		List<Position> snake = game.getSnakePositionsDirect();
 		Position food = game.getFoodPosition();
 
 		boolean terminal = game.getGameState() != GameState.RUNNING;

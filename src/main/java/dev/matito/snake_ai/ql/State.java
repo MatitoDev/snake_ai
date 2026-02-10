@@ -89,7 +89,7 @@ public final class State {
 			throw new IllegalArgumentException("Game is null");
 		}
 
-		List<Position> snake = game.getSnakePositions();
+		List<Position> snake = game.getSnakePositionsDirect();
 		Direction dir = inferDirection(snake);
 		boolean terminal = game.getGameState() != GameState.RUNNING;
 

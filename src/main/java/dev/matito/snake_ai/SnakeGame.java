@@ -128,6 +128,14 @@ public class SnakeGame {
         return new ArrayList<>(snake);
     }
 
+    /**
+     * Returns direct reference to snake list for internal use only.
+     * WARNING: Do not modify this list!
+     */
+    public List<Position> getSnakePositionsDirect() {
+        return snake;
+    }
+
     public Position getFoodPosition() {
         return food;
     }

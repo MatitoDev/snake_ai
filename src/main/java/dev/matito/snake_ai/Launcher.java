@@ -28,8 +28,8 @@ public class Launcher {
 
         System.out.println("Running in headless QL mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
-        System.out.println("Data will auto-save on Ctrl+C interrupt");
         int i = 1;
+        int printEvery = 100; // Only print every 100 episodes
         while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
             Direction chosenDirection = agent.getAIDecision(State.fromGame(game));
             game.setDirection(chosenDirection);
@@ -37,7 +37,9 @@ public class Launcher {
             stats.onStep(game.getScore());
             
             if (game.getGameState() == GameState.GAME_OVER) {
-                System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                if (i % printEvery == 0) {
+                    System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                }
                 stats.onEpisodeEnd(game.getScore());
                 logger.logEpisodeEnd(agent.getEpsilon(), game.getScore(), false, config.getGridWidth(), config.getGridHeight());
                 game.reset();
@@ -91,12 +93,12 @@ public class Launcher {
 
         TrainingStats stats = new TrainingStats();
         DashboardServer dash = DashboardServer.start("config.properties", agent, stats);
-        DataLogger logger = new DataLogger("dqn_training_data");
+        DataLogger logger = new DataLogger();
 
         System.out.println("Running in headless DQN mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
-        System.out.println("Data will auto-save on Ctrl+C interrupt");
         int i = 1;
+        int printEvery = 100; // Only print every 100 episodes
         while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
             Direction chosenDirection = agent.decide(game);
             game.setDirection(chosenDirection);
@@ -105,7 +107,9 @@ public class Launcher {
             stats.onStep(game.getScore());
             
             if (game.getGameState() == GameState.GAME_OVER) {
-                System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                if (i % printEvery == 0) {
+                    System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
+                }
                 stats.onEpisodeEnd(game.getScore());
                 logger.logEpisodeEnd(agent.getEpsilon(), game.getScore(), false,
                     config.getGridWidth(), config.getGridHeight());
