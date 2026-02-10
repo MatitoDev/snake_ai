@@ -15,8 +15,9 @@ public final class DQNState {
 	private final boolean terminal;
 	private final boolean tooMuchSteps;
 	private final int score;
+	private final double foodDistance;
 
-	private DQNState(int width, int height, double[] gridData, Direction direction, boolean terminal, boolean tooMuchSteps, int score) {
+	private DQNState(int width, int height, double[] gridData, Direction direction, boolean terminal, boolean tooMuchSteps, int score, double foodDistance) {
 		this.width = width;
 		this.height = height;
 		this.gridData = gridData;
@@ -24,6 +25,7 @@ public final class DQNState {
 		this.terminal = terminal;
 		this.tooMuchSteps = tooMuchSteps;
 		this.score = score;
+		this.foodDistance = foodDistance;
 	}
 
 	/*
@@ -58,7 +60,7 @@ public final class DQNState {
 
 		double[] v = new double[4 * planeSize];
 		if (snake == null || snake.isEmpty()) {
-			return new DQNState(w, h, v, Direction.RIGHT, terminal, game.isTooMuchSteps(), score);
+			return new DQNState(w, h, v, Direction.RIGHT, terminal, game.isTooMuchSteps(), score, 0.0);
 		}
 
 		Position head = snake.getFirst();
@@ -73,11 +75,18 @@ public final class DQNState {
 
 		// Body Channel (mit Tail, ohne Head)
 		int bodyBase = planeSize;
-		for (int i = 1; i < snake.size(); i++) {
+		int n = snake.size();
+		int denom = Math.max(1, n - 1);
+
+		for (int i = 1; i < n; i++) {
 			Position p = snake.get(i);
 			int idx = p.getY() * w + p.getX();
-			if (idx >= 0 && idx < planeSize) v[bodyBase + idx] = 1.0;
+			if (idx < 0 || idx >= planeSize) continue;
+
+			double timeUntilFree = (n - 1 - i) / (double) denom;
+			v[bodyBase + idx] = timeUntilFree;
 		}
+
 
 		// Head Channel
 		int headIdx = head.getY() * w + head.getX();
@@ -110,7 +119,9 @@ public final class DQNState {
 			put(v, 0, 10, food.getX() < head.getX() ? 1.0 : 0.0);  // foodLeft
 		}
 
-		return new DQNState(w, h, v, dir, terminal, game.isTooMuchSteps(), score);
+		int dis_food_snake = manhattan(head.getX(), head.getY(), food.getX(), food.getY());
+
+		return new DQNState(w, h, v, dir, terminal, game.isTooMuchSteps(), score, dis_food_snake);
 	}
 
 	private static void put(double[] v, int base, int offset, double value) {
@@ -166,6 +177,14 @@ public final class DQNState {
 		};
 	}
 
+	private static int manhattan(int x1, int y1, int x2, int y2) {
+		int dx = x1 - x2;
+		if (dx < 0) dx = -dx;
+		int dy = y1 - y2;
+		if (dy < 0) dy = -dy;
+		return dx + dy;
+	}
+
 	private static Direction inferDirection(List<Position> snakeHeadFirst, int w, int h) {
 		if (snakeHeadFirst == null || snakeHeadFirst.size() < 2) return Direction.RIGHT;
 
@@ -202,5 +221,9 @@ public final class DQNState {
 
 	public boolean isTooMuchSteps() {
 		return tooMuchSteps;
+	}
+
+	public double getFoodDistance() {
+		return foodDistance;
 	}
 }
