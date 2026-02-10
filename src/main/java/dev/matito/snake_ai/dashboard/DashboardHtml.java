@@ -133,7 +133,7 @@ async function j(url) {
 function pretty(obj) { return JSON.stringify(obj, null, 2); }
 
 async function refreshStatus() {
-  const s = await j("/api/status");
+  const s = await j("api/status");
 
   $("hs").textContent = s.metrics?.highscore ?? 0;
   $("cs").textContent = s.metrics?.currentScore ?? 0;
@@ -200,7 +200,7 @@ function renderQTable(rows, start) {
 async function refreshQTable() {
   $("qstart").textContent = qStart;
   try {
-    const r = await j(`/api/qtable?start=${qStart}&limit=${qLimit}`);
+    const r = await j(`api/qtable?start=${qStart}&limit=${qLimit}`);
     renderQTable(r.rows ?? [], r.start ?? 0);
     $("prev").disabled = qStart <= 0;
     $("next").disabled = (qStart + qLimit) >= (r.states ?? 2048);
@@ -211,7 +211,7 @@ async function refreshQTable() {
 
 async function fetchSlice(net) {
   const url =
-    `/api/nn/slice?net=${encodeURIComponent(net)}` +
+    `api/nn/slice?net=${encodeURIComponent(net)}` +
     `&inStart=${nn.inStart}&inCount=${nn.inCount}` +
     `&h1Start=${nn.h1Start}&h1Count=${nn.h1Count}` +
     `&h2Start=${nn.h2Start}&h2Count=${nn.h2Count}`;
