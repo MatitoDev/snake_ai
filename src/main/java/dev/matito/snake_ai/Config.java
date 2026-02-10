@@ -19,6 +19,7 @@ public class Config {
     private final double agentEpsilonStart;
     private final double agentEpsilonMin;
     private final double epsilonDecay;
+    private final String replayFile;
 
     public Config(String configPath) {
         Properties props = new Properties();
@@ -37,6 +38,7 @@ public class Config {
             this.agentEpsilonStart = Double.parseDouble(props.getProperty("agent.epsilon.start", "1.0"));
             this.agentEpsilonMin = Double.parseDouble(props.getProperty("agent.epsilon.min", "0.005"));
             this.epsilonDecay = Double.parseDouble(props.getProperty("agent.epsilon.decay", "0.9995"));
+            this.replayFile = props.getProperty("replay.file", "");
         } catch (IOException e) {
             throw new RuntimeException("Failed to load config: " + configPath, e);
         }
@@ -95,5 +97,9 @@ public class Config {
 
     public String getAgent() {
         return agent;
+    }
+
+    public String getReplayFile() {
+        return replayFile;
     }
 }

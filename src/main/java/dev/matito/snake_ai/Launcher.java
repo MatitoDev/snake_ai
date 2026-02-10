@@ -24,21 +24,25 @@ public class Launcher {
 
         TrainingStats stats = new TrainingStats();
         DashboardServer dash = DashboardServer.start("config.properties", agent, stats);
+        DataLogger logger = new DataLogger("ql_training_data");
 
         System.out.println("Running in headless QL mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
+        System.out.println("Data will auto-save on Ctrl+C interrupt");
         int i = 1;
         while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
-            game.setDirection(agent.getAIDecision(State.fromGame(game)));
+            Direction chosenDirection = agent.getAIDecision(State.fromGame(game));
+            game.setDirection(chosenDirection);
+            game.step();
+            stats.onStep(game.getScore());
+            
             if (game.getGameState() == GameState.GAME_OVER) {
-                //System.out.println(agent.getEpsilonDecay());
                 System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
                 stats.onEpisodeEnd(game.getScore());
+                logger.logEpisodeEnd(agent.getEpsilon(), game.getScore(), false, config.getGridWidth(), config.getGridHeight());
                 game.reset();
                 i++;
             }
-            game.step();
-            stats.onStep(game.getScore());
         }
 
         System.out.println("Try to get Highscore");
@@ -46,24 +50,36 @@ public class Launcher {
         int steps = 0;
         while (game.getGameState() != GameState.WON) {
             agent.setExploration(0.0, 0.0, 0.0);
-            game.setDirection(agent.decide(game));
+            Direction chosenDirection = agent.decide(game);
+            game.setDirection(chosenDirection);
+            game.step();
+            steps++;
+            stats.onStep(game.getScore());
+            logger.logStep(agent.getLastReward(), game.getScore(), chosenDirection, game.getFoodPosition());
+            
             if (game.getGameState() == GameState.GAME_OVER) {
                 if (game.getScore() > highscore) {
                     System.out.println("New Highscore: " + game.getScore());
                     System.out.println("Steps: " + steps);
                     steps = 0;
                     stats.onEpisodeEnd(game.getScore());
+                    logger.logEpisodeEnd(0.0, game.getScore(), true,
+                        config.getGridWidth(), config.getGridHeight());
                     highscore = game.getScore();
                 }
                 game.reset();
             }
-            game.step();
-            steps++;
-            stats.onStep(game.getScore());
         }
 
         System.out.println("Final score: " + game.getScore());
         System.out.println("Game state: " + game.getGameState());
+        
+        try {
+            logger.save("ql_training_data");
+            System.out.println("Training data saved to ql_training_data_*.csv");
+        } catch (java.io.IOException e) {
+            System.err.println("Failed to save training data: " + e.getMessage());
+        }
     }
 
     private static void runHeadlessDQN(Config config) {
@@ -75,42 +91,60 @@ public class Launcher {
 
         TrainingStats stats = new TrainingStats();
         DashboardServer dash = DashboardServer.start("config.properties", agent, stats);
+        DataLogger logger = new DataLogger("dqn_training_data");
 
         System.out.println("Running in headless DQN mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
+        System.out.println("Data will auto-save on Ctrl+C interrupt");
         int i = 1;
         while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
-            game.setDirection(agent.decide(game));
+            Direction chosenDirection = agent.decide(game);
+            game.setDirection(chosenDirection);
+            agent.train(config.getAgentDqnBatch());
+            game.step();
+            stats.onStep(game.getScore());
+            
             if (game.getGameState() == GameState.GAME_OVER) {
                 System.out.println(game.getScore() + " - " + agent.getEpsilon() + " - " + i);
                 stats.onEpisodeEnd(game.getScore());
+                logger.logEpisodeEnd(agent.getEpsilon(), game.getScore(), false,
+                    config.getGridWidth(), config.getGridHeight());
                 game.reset();
                 agent.resetEpisode();
                 i++;
             }
-            agent.train(config.getAgentDqnBatch());
-            game.step();
-            stats.onStep(game.getScore());
         }
 
         System.out.println("Try to get Highscore");
         int highscore = 0;
         while (game.getGameState() != GameState.WON) {
             agent.setEpsilon(0.0, 0.0, 0.0);
-            game.setDirection(agent.decide(game));
+            Direction chosenDirection = agent.decide(game);
+            game.setDirection(chosenDirection);
+            game.step();
+            stats.onStep(game.getScore());
+            logger.logStep(agent.getLastReward(), game.getScore(), chosenDirection, game.getFoodPosition());
+            
             if (game.getGameState() == GameState.GAME_OVER) {
                 if (game.getScore() > highscore) {
                     System.out.println("New Highscore: " + game.getScore());
                     stats.onEpisodeEnd(game.getScore());
+                    logger.logEpisodeEnd(0.0, game.getScore(), true,
+                        config.getGridWidth(), config.getGridHeight());
                     highscore = game.getScore();
                 }
                 game.reset();
             }
-            game.step();
-            stats.onStep(game.getScore());
         }
 
         System.out.println("Final score: " + game.getScore());
         System.out.println("Game state: " + game.getGameState());
+        
+        try {
+            logger.save("dqn_training_data");
+            System.out.println("Training data saved to dqn_training_data_*.csv");
+        } catch (java.io.IOException e) {
+            System.err.println("Failed to save training data: " + e.getMessage());
+        }
     }
 }

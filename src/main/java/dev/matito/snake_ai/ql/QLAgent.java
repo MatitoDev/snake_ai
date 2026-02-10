@@ -51,6 +51,7 @@ public final class QLAgent {
 	private int prevScore = Integer.MIN_VALUE;
 	private boolean prevTerminal;
 
+	private volatile double lastReward = 0.0;
 	private volatile int lastStateId = -1;
 	private volatile int lastAction = -1;
 
@@ -110,6 +111,7 @@ public final class QLAgent {
 		// Q update for the previous step (s,a) -> s'
 		if (prevStateId != -1 && prevAction != -1 && !prevTerminal) {
 			double reward = rewardFromTransition(state);
+			lastReward = reward;
 			double target = state.isTerminal()
 					? reward
 					: reward + gamma * maxQ(stateId);
@@ -416,6 +418,7 @@ public final class QLAgent {
 
 	public double getAlpha() { return alpha; }
 	public double getGamma() { return gamma; }
+	public double getLastReward() { return lastReward; }
 	public int getLastStateId() { return lastStateId; }
 	public int getLastAction() { return lastAction; }
 

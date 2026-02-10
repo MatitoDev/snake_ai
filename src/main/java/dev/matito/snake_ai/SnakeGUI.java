@@ -102,6 +102,52 @@ public class SnakeGUI {
         gameLoop.start();
     }
 
+    public void startReplay(String replayFilename) {
+        try {
+            ReplayPlayer replay = ReplayPlayer.load(replayFilename);
+            System.out.println("Loaded replay: " + replay.getTotalSteps() + " steps");
+            
+            if (replay.getGridWidth() != game.getGridWidth() || 
+                replay.getGridHeight() != game.getGridHeight()) {
+                System.err.println("Warning: Replay grid size (" + replay.getGridWidth() + "x" + 
+                    replay.getGridHeight() + ") doesn't match game grid size (" + 
+                    game.getGridWidth() + "x" + game.getGridHeight() + ")");
+            }
+            
+            game.reset();
+            
+            gameLoop = new AnimationTimer() {
+                @Override
+                public void handle(long now) {
+                    if (now - lastUpdate >= gameSpeed * 1_000_000L) {
+                        if (replay.hasNextStep() && game.getGameState() == GameState.RUNNING) {
+                            ReplayPlayer.ReplayStep step = replay.getNextStep();
+                            game.setFoodPosition(step.getFoodPosition());
+                            game.setDirection(step.getDirection());
+                            game.step();
+                            render();
+                            lastUpdate = now;
+                        } else if (!replay.hasNextStep()) {
+                            System.out.println("Replay finished - Final score: " + game.getScore());
+                            gameLoop.stop();
+                        }
+                    }
+                }
+            };
+            
+            if (replay.hasNextStep()) {
+                ReplayPlayer.ReplayStep firstStep = replay.getNextStep();
+                game.setFoodPosition(firstStep.getFoodPosition());
+                render();
+            }
+            
+            gameLoop.start();
+        } catch (java.io.IOException e) {
+            System.err.println("Failed to load replay: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void stop() {
         if (gameLoop != null) {
             gameLoop.stop();

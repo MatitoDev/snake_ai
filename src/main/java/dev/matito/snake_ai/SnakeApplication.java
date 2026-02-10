@@ -24,10 +24,15 @@ public class SnakeApplication extends Application {
         stage.setResizable(false);
         stage.show();
 
-
         snakeGUI.getCanvas().requestFocus();
-        if (Objects.equals(config.getAgent(), "QL")) snakeGUI.startQL();
-        else if (Objects.equals(config.getAgent(), "DQN")) snakeGUI.startDQN();
+        
+        if (!config.getReplayFile().isEmpty()) {
+            snakeGUI.startReplay(config.getReplayFile());
+        } else if (Objects.equals(config.getAgent(), "QL")) {
+            snakeGUI.startQL();
+        } else if (Objects.equals(config.getAgent(), "DQN")) {
+            snakeGUI.startDQN();
+        }
     }
 
     @Override

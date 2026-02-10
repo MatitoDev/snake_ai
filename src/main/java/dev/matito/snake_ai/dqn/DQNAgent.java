@@ -42,6 +42,7 @@ public final class DQNAgent {
 	private int prevAction = -1;
 	private int prevScore = 0;
 
+	private volatile double lastReward = 0.0;
 	private volatile double[] lastQValues = null;
 	private volatile long lastSummaryMillis = 0L;
 	private volatile String lastSummaryJson = null;
@@ -83,6 +84,7 @@ public final class DQNAgent {
 
 		if (prevState != null && prevAction != -1) {
 			double reward = computeReward(prevState, currentState);
+			lastReward = reward;
 			replayBuffer.add(new Transition(
 					prevState.getGridData(),
 					prevAction,
@@ -378,6 +380,7 @@ public final class DQNAgent {
 
 	public double getLearningRate() { return alpha; }
 	public double getGamma() { return gamma; }
+	public double getLastReward() { return lastReward; }
 	public double[] getLastQValues() { return lastQValues == null ? null : lastQValues.clone(); }
 
 	public String getOnlineNetworkSummaryJson() {

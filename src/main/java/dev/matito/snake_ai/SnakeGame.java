@@ -120,6 +120,10 @@ public class SnakeGame {
         food = availablePositions.get(random.nextInt(availablePositions.size()));
     }
 
+    public void setFoodPosition(Position foodPosition) {
+        this.food = foodPosition;
+    }
+
     public List<Position> getSnakePositions() {
         return new ArrayList<>(snake);
     }
