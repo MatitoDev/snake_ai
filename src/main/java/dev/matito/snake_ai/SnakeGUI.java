@@ -92,7 +92,7 @@ public class SnakeGUI {
                         System.out.println(game.getScore() + " - " + agent.getEpsilon());
                         game.reset();
                     }
-                    agent.train(config.getAgentDqnBatch());
+                    if (agent.getEpsilon() > 0.0) agent.train(config.getAgentDqnBatch());
                     game.step();
                     render();
                     lastUpdate = now;

@@ -43,18 +43,22 @@ public class Launcher {
 
         System.out.println("Try to get Highscore");
         int highscore = 0;
+        int steps = 0;
         while (game.getGameState() != GameState.WON) {
             agent.setExploration(0.0, 0.0, 0.0);
             game.setDirection(agent.decide(game));
             if (game.getGameState() == GameState.GAME_OVER) {
                 if (game.getScore() > highscore) {
                     System.out.println("New Highscore: " + game.getScore());
+                    System.out.println("Steps: " + steps);
+                    steps = 0;
                     stats.onEpisodeEnd(game.getScore());
                     highscore = game.getScore();
                 }
                 game.reset();
             }
             game.step();
+            steps++;
             stats.onStep(game.getScore());
         }
 

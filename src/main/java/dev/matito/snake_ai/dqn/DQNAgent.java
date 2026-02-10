@@ -83,6 +83,7 @@ public final class DQNAgent {
 
 		if (prevState != null && prevAction != -1) {
 			double reward = computeReward(prevState, currentState);
+			
 			replayBuffer.add(new Transition(
 					prevState.getGridData(),
 					prevAction,
@@ -222,15 +223,11 @@ public final class DQNAgent {
 	}
 
 	private double computeReward(DQNState prev, DQNState current) {
-		if (current.isTerminal()) {
-			return -10.0;
-		}
+		if (current.isTooMuchSteps()) return -200;
+		if (current.isTerminal()) return -40.0;
+		if (current.getScore() > prev.getScore()) return 50.0;
 
-		if (current.getScore() > prev.getScore()) {
-			return 10.0;
-		}
-
-		return -0.01;
+		return -0.1;
 	}
 
 	private Direction applyRelativeAction(Direction current, int action) {

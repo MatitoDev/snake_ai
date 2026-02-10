@@ -13,14 +13,16 @@ public final class DQNState {
 	private final double[] gridData;
 	private final Direction direction;
 	private final boolean terminal;
+	private final boolean tooMuchSteps;
 	private final int score;
 
-	private DQNState(int width, int height, double[] gridData, Direction direction, boolean terminal, int score) {
+	private DQNState(int width, int height, double[] gridData, Direction direction, boolean terminal, boolean tooMuchSteps, int score) {
 		this.width = width;
 		this.height = height;
 		this.gridData = gridData;
 		this.direction = direction;
 		this.terminal = terminal;
+		this.tooMuchSteps = tooMuchSteps;
 		this.score = score;
 	}
 
@@ -56,7 +58,7 @@ public final class DQNState {
 
 		double[] v = new double[4 * planeSize];
 		if (snake == null || snake.isEmpty()) {
-			return new DQNState(w, h, v, Direction.RIGHT, terminal, score);
+			return new DQNState(w, h, v, Direction.RIGHT, terminal, game.isTooMuchSteps(), score);
 		}
 
 		Position head = snake.getFirst();
@@ -108,7 +110,7 @@ public final class DQNState {
 			put(v, 0, 10, food.getX() < head.getX() ? 1.0 : 0.0);  // foodLeft
 		}
 
-		return new DQNState(w, h, v, dir, terminal, score);
+		return new DQNState(w, h, v, dir, terminal, game.isTooMuchSteps(), score);
 	}
 
 	private static void put(double[] v, int base, int offset, double value) {
@@ -196,5 +198,9 @@ public final class DQNState {
 
 	public int getScore() {
 		return score;
+	}
+
+	public boolean isTooMuchSteps() {
+		return tooMuchSteps;
 	}
 }

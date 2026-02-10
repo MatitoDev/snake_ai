@@ -18,6 +18,8 @@ public class SnakeGame {
     private Position food;
     private GameState gameState;
     private int score;
+    private int lastScoreChange = 0;
+    private boolean tooMuchSteps = false;
     private final Random random;
     private boolean ateFood;
 
@@ -42,6 +44,8 @@ public class SnakeGame {
         nextDirection = Direction.RIGHT;
         gameState = GameState.RUNNING;
         score = 0;
+        tooMuchSteps = false;
+        lastScoreChange = 0;
         ateFood = false;
         spawnFood();
     }
@@ -61,7 +65,8 @@ public class SnakeGame {
         Position head = snake.getFirst();
         Position newHead = head.move(currentDirection);
 
-        if (isOutOfBounds(newHead) || snake.contains(newHead)) {
+        if (lastScoreChange > 200) tooMuchSteps = true;
+        if (isOutOfBounds(newHead) || snake.contains(newHead) || tooMuchSteps) {
             gameState = GameState.GAME_OVER;
             return;
         }
@@ -70,11 +75,13 @@ public class SnakeGame {
 
         if (newHead.equals(food)) {
             score++;
+            lastScoreChange = 0;
             spawnFood();
             ateFood = true;
         } else {
             snake.remove(snake.size() - 1);
             ateFood = false;
+            lastScoreChange++;
         }
 
         checkWinCondition();
@@ -147,5 +154,9 @@ public class SnakeGame {
                 gameState == GameState.GAME_OVER,
                 score
         );
+    }
+
+    public boolean isTooMuchSteps() {
+        return tooMuchSteps;
     }
 }
