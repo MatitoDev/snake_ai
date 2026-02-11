@@ -15,6 +15,8 @@ public class Config {
     private final double agentGamma;
     private final int agentDqnReplay;
     private final int agentDqnBatch;
+    private final int agentDqnTrainFreq;
+    private final int agentDqnParallelGames;
     private final boolean epsilonOverride;
     private final double agentEpsilonStart;
     private final double agentEpsilonMin;
@@ -34,6 +36,11 @@ public class Config {
             this.agentGamma = Double.parseDouble(props.getProperty("agent.gamma", "0.9"));
             this.agentDqnReplay = Integer.parseInt(props.getProperty("agent.dqn.replay", "16"));
             this.agentDqnBatch = Integer.parseInt(props.getProperty("agent.dqn.batch", "8"));
+            this.agentDqnTrainFreq = Integer.parseInt(props.getProperty(
+                    "agent.dqn.train.frequency",
+                    String.valueOf(gridWidth * gridHeight > 400 ? 10 : (gridWidth * gridHeight > 100 ? 4 : 1)))
+            );
+            this.agentDqnParallelGames = Integer.parseInt(props.getProperty("agent.dqn.parallel.games", "0"));
             this.epsilonOverride = Boolean.parseBoolean(props.getProperty("agent.epsilon.override", "false"));
             this.agentEpsilonStart = Double.parseDouble(props.getProperty("agent.epsilon.start", "1.0"));
             this.agentEpsilonMin = Double.parseDouble(props.getProperty("agent.epsilon.min", "0.005"));
@@ -101,5 +108,13 @@ public class Config {
 
     public String getReplayFile() {
         return replayFile;
+    }
+
+    public int getAgentDqnTrainFreq() {
+        return agentDqnTrainFreq;
+    }
+
+    public int getAgentDqnParallelGames() {
+        return agentDqnParallelGames;
     }
 }

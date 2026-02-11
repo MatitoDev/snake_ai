@@ -7,6 +7,7 @@ import dev.matito.snake_ai.ql.QLAgent;
 import dev.matito.snake_ai.ql.State;
 
 import java.util.Objects;
+import java.util.Random;
 
 public class Launcher {
     public static <DashboardServer> void main(String[] args) {
@@ -88,7 +89,6 @@ public class Launcher {
     }
 
     private static void runHeadlessDQN(Config config) {
-        SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
         DQNAgent agent = new DQNAgent(config.getGridWidth(), config.getGridHeight(), config.getAgentDqnReplay(), 123456789L);
         agent.setLearningRate(config.getAgentAlpha());
         agent.setGamma(config.getAgentGamma());
@@ -96,16 +96,80 @@ public class Launcher {
 
         TrainingStats stats = new TrainingStats();
         DashboardServer dash = DashboardServer.start("config.properties", agent, stats);
-        DataLogger logger = new DataLogger();
+        DataLogger logger = new DataLogger("dqn_training_data");
+
+        if (config.getAgentDqnParallelGames() > 0) {
+            System.out.println("Using parallel training with " + config.getAgentDqnParallelGames() + " games");
+            System.out.println("Training frequency: every " + config.getAgentDqnTrainFreq() + " steps");
+            ParallelDQNTrainer trainer = new ParallelDQNTrainer(config, agent, stats, config.getAgentDqnParallelGames());
+            trainer.train();
+        } else {
+            runStandardDQN(config, agent, stats, logger);
+        }
+
+        System.out.println("Try to get Highscore");
+        SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
+        int highscore = 0;
+        int greedyEpisodes = 0;
+        int maxGreedyEpisodes = 1000;
+        
+        while (game.getGameState() != GameState.WON && greedyEpisodes < maxGreedyEpisodes) {
+            agent.setEpsilon(0.0, 0.0, 0.0);
+            Direction chosenDirection = agent.decide(game);
+            game.setDirection(chosenDirection);
+            game.step();
+            stats.onStep(game.getScore());
+            logger.logStep(agent.getLastReward(), game.getScore(), chosenDirection, game.getFoodPosition());
+            
+            if (game.getGameState() == GameState.GAME_OVER) {
+                greedyEpisodes++;
+                if (game.getScore() > highscore) {
+                    System.out.println("New Highscore: " + game.getScore() + " (episode " + greedyEpisodes + ")");
+                    stats.onEpisodeEnd(game.getScore());
+                    logger.logEpisodeEnd(0.0, game.getScore(), true,
+                        config.getGridWidth(), config.getGridHeight());
+                    highscore = game.getScore();
+                }
+                game.reset();
+                agent.resetEpisode();
+            }
+        }
+
+        System.out.println("Greedy phase complete: " + greedyEpisodes + " episodes, best score: " + highscore);
+        System.out.println("Final score: " + game.getScore());
+        System.out.println("Game state: " + game.getGameState());
+        
+        stats.close();
+        
+        try {
+            logger.save("dqn_training_data");
+            System.out.println("Training data saved to dqn_training_data_*.csv");
+        } catch (java.io.IOException e) {
+            System.err.println("Failed to save training data: " + e.getMessage());
+        }
+    }
+
+    private static void runStandardDQN(Config config, DQNAgent agent, TrainingStats stats, DataLogger logger) {
+        SnakeGame game = new SnakeGame(config.getGridWidth(), config.getGridHeight());
 
         System.out.println("Running in headless DQN mode");
         System.out.println("Grid size: " + config.getGridWidth() + "x" + config.getGridHeight());
+        System.out.println("Training frequency: every " + config.getAgentDqnTrainFreq() + " steps");
+        
         int i = 1;
-        int printEvery = 100; // Only print every 100 episodes
+        int printEvery = 100;
+        int stepCounter = 0;
+        
         while (!(game.getGameState() == GameState.WON || agent.getEpsilon() <= agent.getEpsilonMin())) {
             Direction chosenDirection = agent.decide(game);
             game.setDirection(chosenDirection);
-            agent.train(config.getAgentDqnBatch());
+            
+            stepCounter++;
+            // Train every N steps instead of every step
+            if (stepCounter % config.getAgentDqnTrainFreq() == 0) {
+                agent.train(config.getAgentDqnBatch());
+            }
+            
             game.step();
             stats.onStep(game.getScore());
             
@@ -120,41 +184,6 @@ public class Launcher {
                 agent.resetEpisode();
                 i++;
             }
-        }
-
-        System.out.println("Try to get Highscore");
-        int highscore = 0;
-        while (game.getGameState() != GameState.WON) {
-            agent.setEpsilon(0.0, 0.0, 0.0);
-            Direction chosenDirection = agent.decide(game);
-            game.setDirection(chosenDirection);
-            game.step();
-            stats.onStep(game.getScore());
-            logger.logStep(agent.getLastReward(), game.getScore(), chosenDirection, game.getFoodPosition());
-            
-            if (game.getGameState() == GameState.GAME_OVER) {
-                if (game.getScore() > highscore) {
-                    System.out.println("New Highscore: " + game.getScore());
-                    stats.onEpisodeEnd(game.getScore());
-                    logger.logEpisodeEnd(0.0, game.getScore(), true,
-                        config.getGridWidth(), config.getGridHeight());
-                    highscore = game.getScore();
-                }
-                game.reset();
-                agent.resetEpisode(); // Reset agent state for new episode
-            }
-        }
-
-        System.out.println("Final score: " + game.getScore());
-        System.out.println("Game state: " + game.getGameState());
-        
-        stats.close(); // Close stats thread
-        
-        try {
-            logger.save("dqn_training_data");
-            System.out.println("Training data saved to dqn_training_data_*.csv");
-        } catch (java.io.IOException e) {
-            System.err.println("Failed to save training data: " + e.getMessage());
         }
     }
 }
