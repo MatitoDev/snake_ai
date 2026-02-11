@@ -15,14 +15,14 @@ public final class ReplayBuffer {
 		this.random = new Random(seed);
 	}
 
-	public void add(Transition transition) {
+	public synchronized void add(Transition transition) {
 		if (buffer.size() >= capacity) {
 			buffer.removeFirst();
 		}
 		buffer.add(transition);
 	}
 
-	public List<Transition> sample(int batchSize) {
+	public synchronized List<Transition> sample(int batchSize) {
 		if (buffer.size() < batchSize) {
 			return new ArrayList<>(buffer);
 		}
@@ -41,11 +41,11 @@ public final class ReplayBuffer {
 		return batch;
 	}
 
-	public int size() {
+	public synchronized int size() {
 		return buffer.size();
 	}
 
-	public void clear() {
+	public synchronized void clear() {
 		buffer.clear();
 	}
 }

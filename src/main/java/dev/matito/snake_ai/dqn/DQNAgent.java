@@ -26,9 +26,9 @@ public final class DQNAgent {
 
 	private double alpha = 0.001;
 	private double gamma = 0.95;
-	private double epsilon;
-	private double epsilonMin;
-	private double epsilonDecay;
+	private volatile double epsilon;
+	private volatile double epsilonMin;
+	private volatile double epsilonDecay;
 
 	private int targetUpdateFrequency = 100;
 	private int updateCounter = 0;
@@ -38,9 +38,14 @@ public final class DQNAgent {
 	private long steps = 0L;
 	private long lastAutoSaveMillis = 0L;
 
-	private DQNState prevState = null;
-	private int prevAction = -1;
-	private int prevScore = 0;
+	private static final class EpisodeMemory {
+		DQNState prevState;
+		int prevAction = -1;
+		int prevScore = 0;
+	}
+
+	private final ThreadLocal<EpisodeMemory> episode = ThreadLocal.withInitial(EpisodeMemory::new);
+	private final Object saveLock = new Object();
 
 	private volatile double lastReward = 0.0;
 	private volatile double[] lastQValues = null;
@@ -74,14 +79,19 @@ public final class DQNAgent {
 	}
 
 	public void resetEpisode() {
-		prevState = null;
-		prevAction = -1;
-		prevScore = 0;
+		EpisodeMemory m = episode.get();
+		m.prevState = null;
+		m.prevAction = -1;
+		m.prevScore = 0;
 	}
 
+
 	public Direction decide(SnakeGame game) {
+		EpisodeMemory m = episode.get();
 		DQNState currentState = DQNState.fromGame(game);
 
+		DQNState prevState = m.prevState;
+		int prevAction = m.prevAction;
 		if (prevState != null && prevAction != -1) {
 			double reward = computeReward(prevState, currentState);
 			lastReward = reward;
@@ -97,9 +107,9 @@ public final class DQNAgent {
 		int action = selectAction(currentState);
 		Direction outDir = applyRelativeAction(currentState.getDirection(), action);
 
-		prevState = currentState;
-		prevAction = action;
-		prevScore = currentState.getScore();
+		m.prevState = currentState;
+		m.prevAction = action;
+		m.prevScore = currentState.getScore();
 
 		steps++;
 		maybeAutoSave();
@@ -115,13 +125,13 @@ public final class DQNAgent {
 		List<Transition> batch = replayBuffer.sample(batchSize);
 
 		for (Transition t : batch) {
-			double[] qValues = onlineNetwork.forward(t.getState());
+			double[] qValues = forwardOnline(t.getState());
 			double target;
 
 			if (t.isTerminal()) {
 				target = t.getReward();
 			} else {
-				double[] nextQValues = targetNetwork.forward(t.getNextState());
+				double[] nextQValues = forwardTarget(t.getNextState());
 				double maxNextQ = nextQValues[0];
 				for (int i = 1; i < NUM_ACTIONS; i++) {
 					if (nextQValues[i] > maxNextQ) {
@@ -139,11 +149,27 @@ public final class DQNAgent {
 
 		updateCounter++;
 		if (updateCounter % targetUpdateFrequency == 0) {
-			targetNetwork.copyWeightsFrom(onlineNetwork);
+			synchronized (onlineNetwork) {
+				synchronized (targetNetwork) {
+					targetNetwork.copyWeightsFrom(onlineNetwork);
+				}
+			}
 		}
 
 		if (epsilon > epsilonMin) {
 			epsilon = Math.max(epsilonMin, epsilon * epsilonDecay);
+		}
+	}
+
+	private double[] forwardOnline(double[] input) {
+		synchronized (onlineNetwork) {
+			return onlineNetwork.forward(input);
+		}
+	}
+
+	private double[] forwardTarget(double[] input) {
+		synchronized (targetNetwork) {
+			return targetNetwork.forward(input);
 		}
 	}
 
@@ -152,7 +178,7 @@ public final class DQNAgent {
 			return random.nextInt(NUM_ACTIONS);
 		}
 
-		double[] qValues = onlineNetwork.forward(state.getGridData());
+		double[] qValues = forwardOnline(state.getGridData());
 		lastQValues = qValues.clone();
 		int bestAction = 0;
 		double bestValue = qValues[0];
@@ -168,58 +194,60 @@ public final class DQNAgent {
 	}
 
 	private void backpropagate(double[] input, double[] targetOutput) {
-		double[] output = onlineNetwork.forward(input);
+		synchronized (onlineNetwork) {
+			double[] output = onlineNetwork.forward(input);
 
-		double[] outputError = new double[NUM_ACTIONS];
-		for (int i = 0; i < NUM_ACTIONS; i++) {
-			outputError[i] = targetOutput[i] - output[i];
-		}
+			double[] outputError = new double[NUM_ACTIONS];
+			for (int i = 0; i < NUM_ACTIONS; i++) {
+				outputError[i] = targetOutput[i] - output[i];
+			}
 
-		double[] h2Error = new double[HIDDEN_SIZE_2];
-		for (int i = 0; i < HIDDEN_SIZE_2; i++) {
-			for (int j = 0; j < NUM_ACTIONS; j++) {
-				h2Error[i] += outputError[j] * onlineNetwork.getW3()[j][i];
+			double[] h2Error = new double[HIDDEN_SIZE_2];
+			for (int i = 0; i < HIDDEN_SIZE_2; i++) {
+				for (int j = 0; j < NUM_ACTIONS; j++) {
+					h2Error[i] += outputError[j] * onlineNetwork.getW3()[j][i];
+				}
+				if (onlineNetwork.getH2()[i] <= 0) {
+					h2Error[i] = 0;
+				}
 			}
-			if (onlineNetwork.getH2()[i] <= 0) {
-				h2Error[i] = 0;
-			}
-		}
 
-		double[] h1Error = new double[HIDDEN_SIZE_1];
-		for (int i = 0; i < HIDDEN_SIZE_1; i++) {
-			for (int j = 0; j < HIDDEN_SIZE_2; j++) {
-				h1Error[i] += h2Error[j] * onlineNetwork.getW2()[j][i];
+			double[] h1Error = new double[HIDDEN_SIZE_1];
+			for (int i = 0; i < HIDDEN_SIZE_1; i++) {
+				for (int j = 0; j < HIDDEN_SIZE_2; j++) {
+					h1Error[i] += h2Error[j] * onlineNetwork.getW2()[j][i];
+				}
+				if (onlineNetwork.getH1()[i] <= 0) {
+					h1Error[i] = 0;
+				}
 			}
-			if (onlineNetwork.getH1()[i] <= 0) {
-				h1Error[i] = 0;
-			}
-		}
 
-		double[][] w3 = onlineNetwork.getW3();
-		double[] b3 = onlineNetwork.getB3();
-		for (int i = 0; i < NUM_ACTIONS; i++) {
-			for (int j = 0; j < HIDDEN_SIZE_2; j++) {
-				w3[i][j] += alpha * outputError[i] * onlineNetwork.getH2()[j];
+			double[][] w3 = onlineNetwork.getW3();
+			double[] b3 = onlineNetwork.getB3();
+			for (int i = 0; i < NUM_ACTIONS; i++) {
+				for (int j = 0; j < HIDDEN_SIZE_2; j++) {
+					w3[i][j] += alpha * outputError[i] * onlineNetwork.getH2()[j];
+				}
+				b3[i] += alpha * outputError[i];
 			}
-			b3[i] += alpha * outputError[i];
-		}
 
-		double[][] w2 = onlineNetwork.getW2();
-		double[] b2 = onlineNetwork.getB2();
-		for (int i = 0; i < HIDDEN_SIZE_2; i++) {
-			for (int j = 0; j < HIDDEN_SIZE_1; j++) {
-				w2[i][j] += alpha * h2Error[i] * onlineNetwork.getH1()[j];
+			double[][] w2 = onlineNetwork.getW2();
+			double[] b2 = onlineNetwork.getB2();
+			for (int i = 0; i < HIDDEN_SIZE_2; i++) {
+				for (int j = 0; j < HIDDEN_SIZE_1; j++) {
+					w2[i][j] += alpha * h2Error[i] * onlineNetwork.getH1()[j];
+				}
+				b2[i] += alpha * h2Error[i];
 			}
-			b2[i] += alpha * h2Error[i];
-		}
 
-		double[][] w1 = onlineNetwork.getW1();
-		double[] b1 = onlineNetwork.getB1();
-		for (int i = 0; i < HIDDEN_SIZE_1; i++) {
-			for (int j = 0; j < input.length; j++) {
-				w1[i][j] += alpha * h1Error[i] * input[j];
+			double[][] w1 = onlineNetwork.getW1();
+			double[] b1 = onlineNetwork.getB1();
+			for (int i = 0; i < HIDDEN_SIZE_1; i++) {
+				for (int j = 0; j < input.length; j++) {
+					w1[i][j] += alpha * h1Error[i] * input[j];
+				}
+				b1[i] += alpha * h1Error[i];
 			}
-			b1[i] += alpha * h1Error[i];
 		}
 	}
 
@@ -273,10 +301,17 @@ public final class DQNAgent {
 		boolean byTime = autoSaveEveryMillis > 0 && (now - lastAutoSaveMillis) >= autoSaveEveryMillis;
 		if (!bySteps && !byTime) return;
 
-		try {
-			saveAtomic(persistenceFile);
-			lastAutoSaveMillis = now;
-		} catch (IOException ignored) {
+		synchronized (saveLock) {
+			long now2 = System.currentTimeMillis();
+			boolean bySteps2 = autoSaveEverySteps > 0 && (steps % autoSaveEverySteps) == 0;
+			boolean byTime2 = autoSaveEveryMillis > 0 && (now2 - lastAutoSaveMillis) >= autoSaveEveryMillis;
+			if (!bySteps2 && !byTime2) return;
+
+			try {
+				saveAtomic(persistenceFile);
+				lastAutoSaveMillis = now2;
+			} catch (IOException ignored) {
+			}
 		}
 	}
 
@@ -318,33 +353,41 @@ public final class DQNAgent {
 	}
 
 	public void save(File file) throws IOException {
-		try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
-			out.writeDouble(alpha);
-			out.writeDouble(gamma);
-			out.writeDouble(epsilon);
-			out.writeDouble(epsilonMin);
-			out.writeDouble(epsilonDecay);
-			out.writeInt(targetUpdateFrequency);
-			out.writeInt(updateCounter);
+		synchronized (onlineNetwork) {
+			synchronized (targetNetwork) {
+				try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
+					out.writeDouble(alpha);
+					out.writeDouble(gamma);
+					out.writeDouble(epsilon);
+					out.writeDouble(epsilonMin);
+					out.writeDouble(epsilonDecay);
+					out.writeInt(targetUpdateFrequency);
+					out.writeInt(updateCounter);
 
-			onlineNetwork.save(out);
-			targetNetwork.save(out);
+					onlineNetwork.save(out);
+					targetNetwork.save(out);
+				}
+			}
 		}
 	}
 
 	public void load(File file) throws IOException {
-		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
-			alpha = in.readDouble();
-			gamma = in.readDouble();
-			epsilon = in.readDouble();
-			epsilonMin = in.readDouble();
-			epsilonDecay = in.readDouble();
-			targetUpdateFrequency = in.readInt();
-			updateCounter = in.readInt();
+		synchronized (onlineNetwork) {
+			synchronized (targetNetwork) {
+				try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+					alpha = in.readDouble();
+					gamma = in.readDouble();
+					epsilon = in.readDouble();
+					epsilonMin = in.readDouble();
+					epsilonDecay = in.readDouble();
+					targetUpdateFrequency = in.readInt();
+					updateCounter = in.readInt();
 
-			onlineNetwork.load(in);
-			targetNetwork.load(in);
-			System.out.println("loaded from file");
+					onlineNetwork.load(in);
+					targetNetwork.load(in);
+					System.out.println("loaded from file");
+				}
+			}
 		}
 	}
 
@@ -387,7 +430,10 @@ public final class DQNAgent {
 		long now = System.currentTimeMillis();
 		String cached = lastSummaryJson;
 		if (cached != null && (now - lastSummaryMillis) < 1500L) return cached;
-		String j = buildNetworkSummaryJson(onlineNetwork);
+		String j;
+		synchronized (onlineNetwork) {
+			j = buildNetworkSummaryJson(onlineNetwork);
+		}
 		lastSummaryJson = j;
 		lastSummaryMillis = now;
 		return j;
@@ -470,12 +516,48 @@ public final class DQNAgent {
 		int h1End = Math.min(HIDDEN_SIZE_1, h1Start + h1Count);
 		int h2End = Math.min(HIDDEN_SIZE_2, h2Start + h2Count);
 
-		double[][] w1 = n.getW1();
-		double[] b1 = n.getB1();
-		double[][] w2 = n.getW2();
-		double[] b2 = n.getB2();
-		double[][] w3 = n.getW3();
-		double[] b3 = n.getB3();
+		int inLen = inEnd - inStart;
+		int h1Len = h1End - h1Start;
+		int h2Len = h2End - h2Start;
+
+		double[] b1Slice = new double[h1Len];
+		double[][] w1Slice = new double[h1Len][inLen];
+		double[] b2Slice = new double[h2Len];
+		double[][] w2Slice = new double[h2Len][h1Len];
+		double[] b3Slice = new double[NUM_ACTIONS];
+		double[][] w3Slice = new double[NUM_ACTIONS][h2Len];
+
+		synchronized (n) {
+			double[][] w1 = n.getW1();
+			double[] b1 = n.getB1();
+			double[][] w2 = n.getW2();
+			double[] b2 = n.getB2();
+			double[][] w3 = n.getW3();
+			double[] b3 = n.getB3();
+
+			for (int i = h1Start; i < h1End; i++) {
+				int ii = i - h1Start;
+				b1Slice[ii] = b1[i];
+				for (int j = inStart; j < inEnd; j++) {
+					w1Slice[ii][j - inStart] = w1[i][j];
+				}
+			}
+
+			for (int i = h2Start; i < h2End; i++) {
+				int ii = i - h2Start;
+				b2Slice[ii] = b2[i];
+				for (int j = h1Start; j < h1End; j++) {
+					w2Slice[ii][j - h1Start] = w2[i][j];
+				}
+			}
+
+			for (int i = 0; i < NUM_ACTIONS; i++) {
+				b3Slice[i] = b3[i];
+				for (int j = h2Start; j < h2End; j++) {
+					w3Slice[i][j - h2Start] = w3[i][j];
+				}
+			}
+		}
 
 		StringBuilder sb = new StringBuilder(80_000);
 		sb.append('{');
@@ -491,29 +573,29 @@ public final class DQNAgent {
 
 		sb.append("\"slice\":{");
 		sb.append("\"inStart\":").append(inStart).append(',');
-		sb.append("\"inCount\":").append(inEnd - inStart).append(',');
+		sb.append("\"inCount\":").append(inLen).append(',');
 		sb.append("\"h1Start\":").append(h1Start).append(',');
-		sb.append("\"h1Count\":").append(h1End - h1Start).append(',');
+		sb.append("\"h1Count\":").append(h1Len).append(',');
 		sb.append("\"h2Start\":").append(h2Start).append(',');
-		sb.append("\"h2Count\":").append(h2End - h2Start);
+		sb.append("\"h2Count\":").append(h2Len);
 		sb.append("},");
 
 		// b1
 		sb.append("\"b1\":[");
-		for (int i = h1Start; i < h1End; i++) {
-			if (i > h1Start) sb.append(',');
-			sb.append(b1[i]);
+		for (int i = 0; i < h1Len; i++) {
+			if (i > 0) sb.append(',');
+			sb.append(b1Slice[i]);
 		}
 		sb.append("],");
 
 		// w1: [h1Count][inCount]
 		sb.append("\"w1\":[");
-		for (int i = h1Start; i < h1End; i++) {
-			if (i > h1Start) sb.append(',');
+		for (int i = 0; i < h1Len; i++) {
+			if (i > 0) sb.append(',');
 			sb.append('[');
-			for (int j = inStart; j < inEnd; j++) {
-				if (j > inStart) sb.append(',');
-				sb.append(w1[i][j]);
+			for (int j = 0; j < inLen; j++) {
+				if (j > 0) sb.append(',');
+				sb.append(w1Slice[i][j]);
 			}
 			sb.append(']');
 		}
@@ -521,20 +603,20 @@ public final class DQNAgent {
 
 		// b2
 		sb.append("\"b2\":[");
-		for (int i = h2Start; i < h2End; i++) {
-			if (i > h2Start) sb.append(',');
-			sb.append(b2[i]);
+		for (int i = 0; i < h2Len; i++) {
+			if (i > 0) sb.append(',');
+			sb.append(b2Slice[i]);
 		}
 		sb.append("],");
 
 		// w2: [h2Count][h1Count]
 		sb.append("\"w2\":[");
-		for (int i = h2Start; i < h2End; i++) {
-			if (i > h2Start) sb.append(',');
+		for (int i = 0; i < h2Len; i++) {
+			if (i > 0) sb.append(',');
 			sb.append('[');
-			for (int j = h1Start; j < h1End; j++) {
-				if (j > h1Start) sb.append(',');
-				sb.append(w2[i][j]);
+			for (int j = 0; j < h1Len; j++) {
+				if (j > 0) sb.append(',');
+				sb.append(w2Slice[i][j]);
 			}
 			sb.append(']');
 		}
@@ -544,7 +626,7 @@ public final class DQNAgent {
 		sb.append("\"b3\":[");
 		for (int i = 0; i < NUM_ACTIONS; i++) {
 			if (i > 0) sb.append(',');
-			sb.append(b3[i]);
+			sb.append(b3Slice[i]);
 		}
 		sb.append("],");
 
@@ -553,9 +635,9 @@ public final class DQNAgent {
 		for (int i = 0; i < NUM_ACTIONS; i++) {
 			if (i > 0) sb.append(',');
 			sb.append('[');
-			for (int j = h2Start; j < h2End; j++) {
-				if (j > h2Start) sb.append(',');
-				sb.append(w3[i][j]);
+			for (int j = 0; j < h2Len; j++) {
+				if (j > 0) sb.append(',');
+				sb.append(w3Slice[i][j]);
 			}
 			sb.append(']');
 		}
